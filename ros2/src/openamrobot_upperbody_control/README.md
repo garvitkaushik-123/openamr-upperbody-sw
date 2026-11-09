@@ -20,6 +20,14 @@ reads `joint:` (a string), and upstream's `joints:` list makes it fail to config
   joint with `effort="0" velocity="0"` and no `ros2_control` interface, so this controller cannot load there and nothing spawns it: the lift's
   driver and interlocks belong to the lift node firmware (CTL-017) and the work packages that own it.
 
+## The simulated lift guard (issue #44)
+
+`scripts/lift_guard.py` keeps `lift_controller` inactive unless both arms are stowed and the base is stopped, mirroring the robot's
+lift interlock (CTL-017) in `mock` and `gazebo`. It does not replace that interlock and is not safety evidence. The decision is
+`openamrobot_upperbody_control/lift_guard.py`, unit-tested without ROS in `test/test_lift_guard_logic.py`; its docstring lists the
+blocking codes. Status: `/lift_guard/status` (`diagnostic_msgs/DiagnosticStatus`). The thresholds are provisional parameters until
+the firmware design sets them. Not wired into the launch files yet.
+
 ## The gripper controller's deprecation warning: do not "fix" it
 
 Every configure of the gripper controllers logs a deprecation warning. It is left in place on purpose.
