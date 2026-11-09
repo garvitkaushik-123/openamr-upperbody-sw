@@ -220,18 +220,25 @@ def test_a_moving_reference_is_an_active_trajectory_even_inside_the_tolerance():
     assert guard.evaluate(T0) == (lg.ARM_TRAJECTORY_ACTIVE["left"],)
 
 
-@pytest.mark.parametrize("status", sorted(lg.ACTIVE_GOAL_STATUSES))
-def test_an_accepted_executing_or_canceling_goal_is_an_active_trajectory(status):
+@pytest.mark.parametrize("status", [1, 2, 3,          # ACCEPTED, EXECUTING, CANCELING
+                                    0,                # UNKNOWN: "status has not been properly set", not terminal
+                                    7, 127, -1])      # values action_msgs/GoalStatus does not define
+def test_any_goal_status_but_a_terminal_one_is_an_active_trajectory(status):
     guard = all_good()
     guard.on_goal_statuses("left", [4, status])
     assert guard.evaluate(T0) == (lg.ARM_TRAJECTORY_ACTIVE["left"],)
 
 
-@pytest.mark.parametrize("status", [0, 4, 5, 6])
-def test_finished_or_unknown_goals_do_not_block(status):
+@pytest.mark.parametrize("statuses", [[4], [5], [6], [4, 5, 6], []])
+def test_only_terminal_goals_or_no_goals_do_not_block(statuses):
+    """SUCCEEDED, CANCELED and ABORTED are the only states in which a goal can no longer move the arm. An empty list: no goal."""
     guard = all_good()
-    guard.on_goal_statuses("right", [status])
+    guard.on_goal_statuses("right", statuses)
     assert guard.evaluate(T0) == ()
+
+
+def test_the_terminal_set_is_exactly_succeeded_canceled_aborted():
+    assert lg.TERMINAL_GOAL_STATUSES == frozenset((4, 5, 6))
 
 
 # --- the decision: base -----------------------------------------------------------------------------------------------------------------

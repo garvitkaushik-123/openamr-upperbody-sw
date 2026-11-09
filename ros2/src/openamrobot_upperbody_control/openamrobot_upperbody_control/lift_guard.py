@@ -15,7 +15,8 @@ The decision, per evaluation, is a tuple of blocking codes, in CODE_ORDER; empty
                                         (also: a controller_state that does not cover the arm's joints, or has no reference velocities)
   ARM_NOT_STOWED_{LEFT,RIGHT}           the arm's joints are not all within stowed_tolerance of one of the stowed states
   ARM_TRAJECTORY_ACTIVE_{LEFT,RIGHT}    the arm controller's reference is not at a stowed state, or moves faster than reference_velocity_max,
-                                        or its follow_joint_trajectory action has a goal ACCEPTED, EXECUTING or CANCELING
+                                        or its follow_joint_trajectory action has a goal in any status but SUCCEEDED, CANCELED or
+                                        ABORTED (UNKNOWN and undefined values included)
   ODOM_MISSING / ODOM_STALE             no odometry yet / older than state_timeout_s
   BASE_MOVING                           the base's speed is not below its thresholds, or has not been for base_stopped_hold_s
   SWITCH_FAILED                         the last controller switch the guard asked for failed (set by the node)
@@ -43,9 +44,10 @@ SWITCH_FAILED = "SWITCH_FAILED"
 CODE_ORDER = (ARM_STATE_MISSING, ARM_STATE_STALE, ARM_NOT_STOWED["left"], ARM_NOT_STOWED["right"],
               ARM_TRAJECTORY_ACTIVE["left"], ARM_TRAJECTORY_ACTIVE["right"], ODOM_MISSING, ODOM_STALE, BASE_MOVING, SWITCH_FAILED)
 
-# action_msgs/msg/GoalStatus: the states in which a goal is, or may still become, motion.
-GOAL_STATUS_ACCEPTED, GOAL_STATUS_EXECUTING, GOAL_STATUS_CANCELING = 1, 2, 3
-ACTIVE_GOAL_STATUSES = frozenset((GOAL_STATUS_ACCEPTED, GOAL_STATUS_EXECUTING, GOAL_STATUS_CANCELING))
+# action_msgs/msg/GoalStatus: the terminal states, the only ones in which a goal can no longer move the arm. Every other value blocks:
+# ACCEPTED (1), EXECUTING (2) and CANCELING (3), UNKNOWN (0, "status has not been properly set") and any value the message does not define.
+GOAL_STATUS_SUCCEEDED, GOAL_STATUS_CANCELED, GOAL_STATUS_ABORTED = 4, 5, 6
+TERMINAL_GOAL_STATUSES = frozenset((GOAL_STATUS_SUCCEEDED, GOAL_STATUS_CANCELED, GOAL_STATUS_ABORTED))
 
 # diagnostic_msgs/msg/DiagnosticStatus levels used here.
 LEVEL_OK, LEVEL_ERROR = 0, 2
@@ -176,7 +178,8 @@ class LiftGuardLogic:
 
     def on_goal_statuses(self, side, statuses):
         """The status codes of every goal in the arm's follow_joint_trajectory/_action/status (action_msgs/GoalStatusArray). This topic only
-        publishes on a change, so it has no freshness: no message yet means no goal yet."""
+        publishes on a change, so it has no freshness: no message yet means no goal yet. Any goal not in a terminal status (SUCCEEDED,
+        CANCELED, ABORTED) blocks, including UNKNOWN and values the message does not define."""
         self._goal_statuses[side] = frozenset(int(s) for s in statuses)
 
     def on_odometry(self, linear, angular, now):
@@ -214,7 +217,7 @@ class LiftGuardLogic:
                 reference, velocities_ok, _ = controller
                 if not velocities_ok or not any(_within(reference, pose, joints, tolerance) for pose in self.stowed_poses[side]):
                     codes.add(ARM_TRAJECTORY_ACTIVE[side])
-            if self._goal_statuses[side] & ACTIVE_GOAL_STATUSES:
+            if self._goal_statuses[side] - TERMINAL_GOAL_STATUSES:
                 codes.add(ARM_TRAJECTORY_ACTIVE[side])
         if self._odom_received is None:
             codes.add(ODOM_MISSING)
