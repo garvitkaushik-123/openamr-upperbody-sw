@@ -172,9 +172,31 @@ def park_both_arms(client):
     return row, None if row["ok"] else f"{BOTH_ARMS_GROUP}/{PARK}: {row['error_name']}, final error {row['final_max_joint_error']} (limit {TOLERANCE})"
 
 
+LIFT_GUARD_STATUS_TOPIC = "/lift_guard/status"
+LIFT_GUARD_WAIT_S = 30.0        # the guard activates lift_controller about 0.5 s after the arms settle in park (base hold, freshness)
+
+
+def wait_for_lift_guard(client, seconds=LIFT_GUARD_WAIT_S):
+    """(ok, last status message or None): spin `client`'s node until the lift guard (issue #44) reports OK on /lift_guard/status, i.e.
+    lift_controller is active. Since #44 lift_controller is spawned inactive and rejects goals until the guard activates it, so a lift goal
+    sent before that would be rejected. Subscribes once per client, with the guard's own QoS (transient local)."""
+    from diagnostic_msgs.msg import DiagnosticStatus
+    from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
+    if not hasattr(client, "_lift_guard_status"):
+        client._lift_guard_status = [None]
+        latched = QoSProfile(history=HistoryPolicy.KEEP_LAST, depth=1, reliability=ReliabilityPolicy.RELIABLE,
+                             durability=DurabilityPolicy.TRANSIENT_LOCAL)
+        client.node.create_subscription(DiagnosticStatus, LIFT_GUARD_STATUS_TOPIC,
+                                        lambda msg: client._lift_guard_status.__setitem__(0, msg), latched)
+    ok = client.spin_until(lambda: client._lift_guard_status[0] is not None
+                           and client._lift_guard_status[0].level == DiagnosticStatus.OK, seconds)
+    return ok, client._lift_guard_status[0]
+
+
 def move_lift(client, stops):
-    """Plan and execute the lift through `stops` (calibration stops), each only after the arms read `park`. -> (rows, failures). A lift goal
-    whose precondition does not hold is not sent: its row says NOT_SENT and the run fails (scenario design, not an interlock)."""
+    """Plan and execute the lift through `stops` (calibration stops), each only after the arms read `park` and the lift guard (issue #44)
+    reports OK. -> (rows, failures). A lift goal whose precondition does not hold is not sent: its row says NOT_SENT and the run fails
+    (scenario design; the guard mirrors the interlock in simulation, CTL-017 is the interlock)."""
     rows, failures, park = [], [], park_goal()
     for stop in stops:
         arms_error = client.max_error(park) if all(j in client.joint_states for j in park) else float("nan")
@@ -184,6 +206,15 @@ def move_lift(client, stops):
             row["arms_in_park_error_rad"] = round(arms_error, 5)
             rows.append(row)
             failures.append(f"{LIFT_GROUP}/{stop}: not sent, the arms are not in `park` (largest error {arms_error:.4f} rad)")
+            break
+        guard_ok, guard_status = wait_for_lift_guard(client)
+        if not guard_ok:
+            row = _lift_row(client, LIFT_GROUP, stop, goal, None, LIFT_TOLERANCE_M)
+            row["arms_in_park_error_rad"] = round(arms_error, 5)
+            row["lift_guard_status"] = None if guard_status is None else guard_status.message
+            rows.append(row)
+            failures.append(f"{LIFT_GROUP}/{stop}: not sent, the lift guard did not report OK within {LIFT_GUARD_WAIT_S:g} s "
+                            f"(last status: {row['lift_guard_status']!r})")
             break
         outcome = client.move(LIFT_GROUP, goal, execute=True, velocity_scaling=VELOCITY_SCALING, acceleration_scaling=ACCELERATION_SCALING,
                               result_timeout=LIFT_RESULT_TIMEOUT_S)
@@ -254,6 +285,7 @@ def clamp_record(client):
 
 ARM_CONTROLLERS = ("joint_state_broadcaster", "left_arm_controller", "right_arm_controller", "left_gripper_controller", "right_gripper_controller")
 SIM_CONTROLLERS = ARM_CONTROLLERS + (LIFT_CONTROLLER,)      # what M01 and M02 wait for since issue #17: the five above and lift_controller
+# (since issue #44 lift_controller is spawned inactive and turns active when the lift guard allows it, once the start-up move to park is done)
 CONTROLLERS_ACTIVE_WITHIN_S = 120.0     # wall s from the call; the controller manager of a headless server is up in 10-25 s on this machine
 
 

@@ -23,6 +23,11 @@
   <exec_depend>sensor_msgs</exec_depend>
   <!-- lift_guard_odom_stub.py (issue #44, mock only) -->
   <exec_depend>std_srvs</exec_depend>
+  <!-- park_arms.py (issue #44) -->
+  <exec_depend>trajectory_msgs</exec_depend>
+  <!-- lift_guard_launch.py (issue #44), used by the bringup and gazebo launches -->
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
   <test_depend>ament_cmake_pytest</test_depend>
   <test_depend>python3-pytest</test_depend>
   <test_depend>openamrobot_upperbody_description</test_depend>

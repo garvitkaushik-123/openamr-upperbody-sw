@@ -28,7 +28,12 @@ lift interlock (CTL-017) in `mock` and `gazebo`. It does not replace that interl
 blocking codes. Status: `/lift_guard/status` (`diagnostic_msgs/DiagnosticStatus`): OK (the lift may move), WARN with `blocking`
 empty and `lift_controller: activating` (switching on, at most `switch_timeout_s`), ERROR (blocked, always with a code). On SIGINT or
 SIGTERM the node deactivates `lift_controller` before it exits; the launch's exit handler covers SIGKILL. The thresholds are provisional
-parameters until the firmware design sets them. Not wired into the launch files yet.
+parameters until the firmware design sets them.
+
+Wiring (`openamrobot_upperbody_control/lift_guard_launch.py`, used by `mock.launch.py` and `sim.launch.py`): `lift_controller` is
+spawned `--inactive`; the guard runs with an `OnProcessExit` handler that deactivates `lift_controller` (SIGKILL, crash);
+`park_arms.py` moves both arms to `park` once at start-up; in mock `lift_guard_odom_stub.py` publishes `/odom`.
+`wait_for_lift_guard.py` holds `moveit.launch.py lift_position:=X` until the guard reports OK. The real profile has no guard.
 
 ## The gripper controller's deprecation warning: do not "fix" it
 

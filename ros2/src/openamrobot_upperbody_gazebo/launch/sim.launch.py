@@ -15,7 +15,10 @@ What it starts, in this order of dependence
                          states onto a separate topic (see below)
   spawners               joint_state_broadcaster (switch timeout JSB_SWITCH_TIMEOUT_S, service-call timeout longer than that), then,
                          only if that spawner exits 0,
-                         left_arm, right_arm, left_gripper and right_gripper controllers, and lift_controller (issue #17)
+                         left_arm, right_arm, left_gripper and right_gripper controllers, and lift_controller (issue #17),
+                         INACTIVE (issue #44), with a one-off move of both arms to park (park_arms.py)
+  lift_guard             activates lift_controller only while both arms are stowed and the base is stopped (issue #44); it reads the
+                         raw /arm/joint_states and the DiffDrive /odom, and deactivates lift_controller on exit
   joint_state_publisher  the ONLY publisher of /joint_states: it merges the base's wheel joints and the arms' and lift's joints
                          (lift_joint comes from the physics through joint_state_broadcaster since issue #17)
 
@@ -250,6 +253,8 @@ from launch.substitutions import Command, FindExecutable, LaunchConfiguration, P
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 from launch_ros.substitutions import FindPackageShare
+from openamrobot_upperbody_control.lift_guard_launch import LIFT_SPAWNER_ARGUMENTS, lift_guard_actions, park_arms_action
+from openamrobot_upperbody_moveit.moveit_config import srdf_path
 
 DESCRIPTION = "openamrobot_upperbody_description"
 CONTROL = "openamrobot_upperbody_control"
@@ -286,12 +291,20 @@ def spawner(controller, *extra):
                 parameters=[{"use_sim_time": True}])
 
 
+def read_srdf():
+    """The SRDF move_group uses: the lift guard and the start-up park move read the stowed poses from it (issue #44)."""
+    with open(srdf_path()) as f:
+        return f.read()
+
+
 def after_joint_state_broadcaster(event, context):
     """OnProcessExit of the joint_state_broadcaster spawner: the arm and gripper spawners, only if it exited 0. A broadcaster that did not
     activate leaves the stack without /arm/joint_states; starting the other controllers anyway hid that (four of five active), so a failed
-    broadcaster now stops the chain and says why. The tests that wait for five active controllers then fail, naming the broadcaster."""
+    broadcaster now stops the chain and says why. The tests that wait for five active controllers then fail, naming the broadcaster.
+    Issue #44: lift_controller is spawned inactive (the lift guard activates it), and the arms are moved to park once, with the spawners."""
     if event.returncode == 0:
-        return [spawner(name) for name in (*ARM_AND_GRIPPER_CONTROLLERS, LIFT_CONTROLLER)]
+        return [*(spawner(name) for name in ARM_AND_GRIPPER_CONTROLLERS), spawner(LIFT_CONTROLLER, *LIFT_SPAWNER_ARGUMENTS),
+                park_arms_action("gazebo", read_srdf())]
     return [LogInfo(msg=f"joint_state_broadcaster spawner exited {event.returncode}: the arm, gripper and lift spawners are not started")]
 
 
@@ -426,6 +439,7 @@ def generate_launch_description():
         joint_state_broadcaster,
         then_the_rest,
         joint_state_merger,
+        *lift_guard_actions("gazebo", read_srdf()),
         rviz_node,
         track_gazebo_shell,
         stop_server,

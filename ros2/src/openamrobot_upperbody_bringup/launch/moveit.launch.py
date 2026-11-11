@@ -4,9 +4,10 @@
     ros2 launch openamrobot_upperbody_bringup moveit.launch.py [base_plate:=bp000] [sim:=mock|gazebo] [rviz:=false]
                                                               [lift_position:=0.0] [headless:=false] [physics_engine:=<gz-physics plugin>]
 
-  sim=mock     mock.launch.py (arms and lift on mock_components/GenericSystem, six controllers active), a stub that reports the wheel
+  sim=mock     mock.launch.py (arms and lift on mock_components/GenericSystem, six controllers, the lift guard), a stub that reports the wheel
                joints at rest (the base is not under ros2_control), then move_group. Nothing else of the base runs. With a non-zero
-               `lift_position`, one trajectory is sent to lift_controller to take the lift there from 0.
+               `lift_position`, one trajectory is sent to lift_controller to take the lift there from 0, once the lift guard allows it
+               (issue #44: mock.launch.py runs the guard, the arms' start-up move to park and the odometry stub).
   sim=gazebo   openamrobot_upperbody_gazebo's sim.launch.py (Gazebo, the base on its DiffDrive plugin, the arms and the lift on
                gz_ros2_control, the six controllers), then move_group on the simulator's clock.
   In both, lift_joint is a planned joint (issue #17): MoveIt group `lift`, lift_controller. The real profile has no command interface for it.
@@ -50,12 +51,15 @@ LIFT_SPEED_FRACTION = 0.5       # of the DOLD no-load speed (datum lift_max_velo
 
 def lift_to(position, column):
     """sim:=mock: [] for 0.0, else one `ros2 action send_goal` to lift_controller (it waits for the action server) taking lift_joint from its
-    mock start 0 to `position` (m), refused outside 0 .. the column's stroke. Not a planned motion and not the A7 scenario: a viewing aid."""
+    mock start 0 to `position` (m), refused outside 0 .. the column's stroke. Not a planned motion and not the A7 scenario: a viewing aid.
+    Issue #44: lift_controller is spawned inactive and rejects goals until the lift guard activates it, so the goal is sent only after
+    wait_for_lift_guard.py has seen /lift_guard/status OK; if it never does, nothing is sent and the launch says why."""
     if position == 0.0:
         return []
     import math
     import yaml
-    from launch.actions import ExecuteProcess
+    from launch.actions import ExecuteProcess, LogInfo, RegisterEventHandler
+    from launch.event_handlers import OnProcessExit
     share = get_package_share_directory("openamrobot_upperbody_description")
     with open(share + "/config/upperbody_configuration.yaml") as f:
         stroke = yaml.safe_load(f)["column"][column]["stroke"]
@@ -66,8 +70,14 @@ def lift_to(position, column):
     seconds = math.ceil(position / (speed * LIFT_SPEED_FRACTION))
     goal = ("{trajectory: {joint_names: [lift_joint], points: [{positions: [%r], velocities: [0.0], time_from_start: {sec: %d}}]}}"
             % (position, seconds))
-    return [ExecuteProcess(cmd=["ros2", "action", "send_goal", "/lift_controller/follow_joint_trajectory",
-                                "control_msgs/action/FollowJointTrajectory", goal], output="log")]
+    send = ExecuteProcess(cmd=["ros2", "action", "send_goal", "/lift_controller/follow_joint_trajectory",
+                               "control_msgs/action/FollowJointTrajectory", goal], output="log")
+    wait = Node(package="openamrobot_upperbody_control", executable="wait_for_lift_guard.py", name="wait_for_lift_guard", output="log")
+    return [wait, RegisterEventHandler(OnProcessExit(
+        target_action=wait,
+        on_exit=lambda event, context: [send] if event.returncode == 0 else
+        [LogInfo(msg=f"lift_position:={position}: the lift guard did not allow the lift (wait_for_lift_guard exited {event.returncode}); "
+                     "no goal sent")]))]
 
 
 def launch_setup(context, *args, **kwargs):
