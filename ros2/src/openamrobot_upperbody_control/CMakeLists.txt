@@ -15,6 +15,10 @@ if(BUILD_TESTING)
   ament_add_pytest_test(arm_controllers_yaml test/test_arm_controllers_yaml.py TIMEOUT 300)
   # Issue #44: the lift guard's decision, every condition and every missing, stale or malformed input; no ROS runtime.
   ament_add_pytest_test(lift_guard_logic test/test_lift_guard_logic.py TIMEOUT 120)
+  # Issue #44, review of #53: the node with rclpy. Out-of-order controller-manager answers (in process, deterministic) and the exit on
+  # SIGTERM/SIGINT (a child process against a stand-in controller manager), in its own ROS domain.
+  find_package(ament_cmake_ros REQUIRED)
+  ament_add_ros_isolated_pytest_test(lift_guard_node test/test_lift_guard_node.py TIMEOUT 180)
 endif()
 
 ament_package()
