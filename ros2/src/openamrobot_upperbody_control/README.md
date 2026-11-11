@@ -25,8 +25,10 @@ reads `joint:` (a string), and upstream's `joints:` list makes it fail to config
 `scripts/lift_guard.py` keeps `lift_controller` inactive unless both arms are stowed and the base is stopped, mirroring the robot's
 lift interlock (CTL-017) in `mock` and `gazebo`. It does not replace that interlock and is not safety evidence. The decision is
 `openamrobot_upperbody_control/lift_guard.py`, unit-tested without ROS in `test/test_lift_guard_logic.py`; its docstring lists the
-blocking codes. Status: `/lift_guard/status` (`diagnostic_msgs/DiagnosticStatus`). The thresholds are provisional parameters until
-the firmware design sets them. Not wired into the launch files yet.
+blocking codes. Status: `/lift_guard/status` (`diagnostic_msgs/DiagnosticStatus`): OK (the lift may move), WARN with `blocking`
+empty and `lift_controller: activating` (switching on, at most `switch_timeout_s`), ERROR (blocked, always with a code). On SIGINT or
+SIGTERM the node deactivates `lift_controller` before it exits; the launch's exit handler covers SIGKILL. The thresholds are provisional
+parameters until the firmware design sets them. Not wired into the launch files yet.
 
 ## The gripper controller's deprecation warning: do not "fix" it
 

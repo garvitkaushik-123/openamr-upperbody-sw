@@ -8,7 +8,8 @@ one fails. An inactive JointTrajectoryController rejects action goals and ignore
 covered, including the ones that bypass MoveIt.
 
 What it is NOT. It does not replace the robot-side interlock, it is not safety evidence, and it claims nothing about a guard process that
-hangs (only one that exits: the launch deactivates lift_controller then). It runs only in the simulated profiles, mock and gazebo.
+hangs (only one that exits: on SIGINT or SIGTERM the node deactivates lift_controller itself, and on any other exit the launch does). It runs
+only in the simulated profiles, mock and gazebo.
 
 The decision, per evaluation, is a tuple of blocking codes, in CODE_ORDER; empty means the lift may move:
   ARM_STATE_MISSING / ARM_STATE_STALE   an arm joint, or an arm controller's controller_state, never received / older than state_timeout_s
@@ -50,7 +51,7 @@ GOAL_STATUS_SUCCEEDED, GOAL_STATUS_CANCELED, GOAL_STATUS_ABORTED = 4, 5, 6
 TERMINAL_GOAL_STATUSES = frozenset((GOAL_STATUS_SUCCEEDED, GOAL_STATUS_CANCELED, GOAL_STATUS_ABORTED))
 
 # diagnostic_msgs/msg/DiagnosticStatus levels used here.
-LEVEL_OK, LEVEL_ERROR = 0, 2
+LEVEL_OK, LEVEL_WARN, LEVEL_ERROR = 0, 1, 2
 STATUS_NAME = "lift_guard"
 
 # Provisional values, NOT firmware values (issue #44): the firmware design (#20) sets the base threshold, the hold time and the timeout,
@@ -251,19 +252,42 @@ def switch_to_request(codes, controller_state, pending):
     return None
 
 
+def list_answer_is_current(requested_after_switch, requested_while_switching, switches_sent, switching_now):
+    """Whether a list_controllers answer may update lift_controller's known state (issue #44, review of #53).
+
+    An answer requested before the last switch was sent, or while a switch was pending, or that arrives while one is pending, may describe the
+    state before that switch; applied after the switch's own answer it would overwrite newer state (seen as OK published while the
+    controller was inactive). `requested_after_switch` is the number of switches sent when the list was requested, `switches_sent` the number
+    sent now."""
+    return requested_after_switch == switches_sent and not requested_while_switching and not switching_now
+
+
+def activation_overdue(codes, controller_state, activating_since, now, timeout_s):
+    """(activating_since, overdue) for the WARN "activating" state: nothing blocks but lift_controller is not listed active.
+
+    `activating_since` is when that state began (None when not in it). Overdue once it has lasted longer than `timeout_s`: the node then
+    reports SWITCH_FAILED (ERROR) instead of staying in WARN, e.g. when the switch service is not there to answer."""
+    if codes or controller_state == "active":
+        return None, False
+    since = now if activating_since is None else activating_since
+    return since, now - since > timeout_s
+
+
 def build_status(codes, controller_state):
     """The content of /lift_guard/status (diagnostic_msgs/DiagnosticStatus) as plain data: (level, name, message, [(key, value), ...]).
 
     `controller_state` is lift_controller's state as the controller manager last listed it ("active", "inactive", ...), or None when it is
-    not known. OK only when nothing blocks AND lift_controller is listed active; anything else is ERROR, so a reader never sees OK while the
-    lift cannot in fact move, or while it may move against a condition. `lift_controller` is reported "active" only when listed active."""
+    not known. Three levels, as accepted on issue #44:
+      OK     nothing blocks and lift_controller is listed active: the lift may move.
+      WARN   nothing blocks but lift_controller is not listed active yet: switching on. `blocking` is empty, `lift_controller` "activating".
+      ERROR  something blocks: always blocked, and `blocking` always names at least one code. `lift_controller` is "active" if the controller
+             manager lists it active (an outside activation the guard is undoing), else "inactive"."""
     listed_active = controller_state == "active"
-    level = LEVEL_OK if not codes and listed_active else LEVEL_ERROR
-    if level == LEVEL_OK:
-        message = "lift allowed"
-    elif codes:
-        message = "lift blocked: " + ", ".join(codes)
+    if codes:
+        level, message = LEVEL_ERROR, "lift blocked: " + ", ".join(codes)
+        state = "active" if listed_active else "inactive"
+    elif listed_active:
+        level, message, state = LEVEL_OK, "lift allowed", "active"
     else:
-        message = "lift allowed by the guard; lift_controller not active yet"
-    values = [("lift_controller", "active" if listed_active else "inactive"), ("blocking", ",".join(codes))]
-    return level, STATUS_NAME, message, values
+        level, message, state = LEVEL_WARN, "lift allowed by the guard; switching lift_controller on", "activating"
+    return level, STATUS_NAME, message, [("lift_controller", state), ("blocking", ",".join(codes))]

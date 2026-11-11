@@ -309,13 +309,55 @@ def test_codes_come_in_one_fixed_order():
                      lg.ARM_TRAJECTORY_ACTIVE["right"], lg.BASE_MOVING, lg.SWITCH_FAILED)
 
 
-def test_the_status_is_ok_only_when_nothing_blocks_and_lift_controller_is_listed_active():
+def test_ok_only_when_nothing_blocks_and_lift_controller_is_listed_active():
     assert lg.build_status((), "active") == (lg.LEVEL_OK, "lift_guard", "lift allowed",
                                              [("lift_controller", "active"), ("blocking", "")])
-    level, name, message, values = lg.build_status((), "inactive")
-    assert (level, values) == (lg.LEVEL_ERROR, [("lift_controller", "inactive"), ("blocking", "")])
-    assert "not active yet" in message
-    level, _, message, values = lg.build_status((lg.BASE_MOVING, lg.ODOM_STALE), "active")
-    assert level == lg.LEVEL_ERROR and values[1] == ("blocking", "BASE_MOVING,ODOM_STALE") and "BASE_MOVING" in message
-    for unknown in (None, "unconfigured", "finalized"):
-        assert lg.build_status((), unknown)[3][0] == ("lift_controller", "inactive")
+
+
+@pytest.mark.parametrize("listed", ["inactive", None, "unconfigured", "finalized"])
+def test_nothing_blocking_but_not_listed_active_is_warn_activating_with_an_empty_blocking(listed):
+    """Accepted on #44: switching on is WARN, blocking empty, lift_controller "activating"."""
+    level, _, _, values = lg.build_status((), listed)
+    assert (level, values) == (lg.LEVEL_WARN, [("lift_controller", "activating"), ("blocking", "")])
+
+
+@pytest.mark.parametrize("listed, reported", [("active", "active"), ("inactive", "inactive"), (None, "inactive")])
+def test_error_always_means_blocked_and_always_names_a_code(listed, reported):
+    """Accepted on #44: ERROR always means blocked. An outside activation the guard is undoing shows as ERROR with lift_controller active."""
+    level, _, message, values = lg.build_status((lg.BASE_MOVING, lg.ODOM_STALE), listed)
+    assert level == lg.LEVEL_ERROR and values == [("lift_controller", reported), ("blocking", "BASE_MOVING,ODOM_STALE")]
+    assert "BASE_MOVING" in message
+
+
+@pytest.mark.parametrize("codes", [(), (lg.BASE_MOVING,), (lg.SWITCH_FAILED,), tuple(lg.CODE_ORDER)])
+@pytest.mark.parametrize("listed", ["active", "inactive", None])
+def test_every_status_is_one_of_the_three_agreed_shapes(codes, listed):
+    level, name, _, values = lg.build_status(codes, listed)
+    state, blocking = dict(values)["lift_controller"], dict(values)["blocking"]
+    assert name == "lift_guard"
+    assert (level == lg.LEVEL_ERROR) == bool(blocking), "ERROR iff something blocks"
+    if level == lg.LEVEL_OK:
+        assert state == "active" and blocking == ""
+    if level == lg.LEVEL_WARN:
+        assert state == "activating" and blocking == ""
+
+
+# --- the controller manager's answers ---------------------------------------------------------------------------------------------------
+@pytest.mark.parametrize("requested_after, requested_while, sent, switching_now, current", [
+    (3, False, 3, False, True),     # requested after the last switch, nothing pending: current
+    (2, False, 3, False, False),    # requested before the last switch was sent: may predate it (on_list after on_switch)
+    (3, True, 3, False, False),     # requested while a switch was pending
+    (3, False, 3, True, False),     # arrives while a switch is pending
+    (0, False, 0, False, True),     # no switch yet
+])
+def test_a_list_answer_is_applied_only_when_no_switch_can_have_overtaken_it(requested_after, requested_while, sent, switching_now, current):
+    assert lg.list_answer_is_current(requested_after, requested_while, sent, switching_now) is current
+
+
+def test_switching_on_turns_into_switch_failed_after_the_timeout():
+    since, overdue = lg.activation_overdue((), "inactive", None, 10.0, 2.0)
+    assert (since, overdue) == (10.0, False), "the activating state starts now"
+    assert lg.activation_overdue((), "inactive", since, 12.0, 2.0) == (10.0, False), "on the timeout is not past it"
+    assert lg.activation_overdue((), None, since, 12.01, 2.0) == (10.0, True)
+    assert lg.activation_overdue((), "active", since, 50.0, 2.0) == (None, False), "active ends it"
+    assert lg.activation_overdue((lg.BASE_MOVING,), "inactive", since, 50.0, 2.0) == (None, False), "a block ends it"
