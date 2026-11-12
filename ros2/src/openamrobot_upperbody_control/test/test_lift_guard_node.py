@@ -285,9 +285,17 @@ def test_never_confirmed_inactive_is_not_a_clean_exit(guard, node_module):
     assert node_module.EXIT_CODES["failed"] != 0
 
 
+def test_a_manager_that_answers_but_refuses_is_a_failed_exit(guard, node_module):
+    """An answer that is not ok is not silence: the manager is up and did not deactivate. That stays exit 1."""
+    make_active(guard)
+    assert guard.deactivate_for_exit(ScriptedExecutor(guard, switch_ok=False)) == "failed"
+    assert node_module.EXIT_CODES["failed"] != 0
+
+
 def test_a_silent_manager_still_in_the_graph_ends_the_exit_within_its_budget(guard, node_module):
     """A manager that crashed can stay in the graph and never answer (seen with a crashed gz server). The exit must not outlast the
-    launch's 5 s before SIGTERM: it ends within EXIT_BUDGET_S as "failed" (exit 1, the honest result: nothing was confirmed)."""
+    launch's 5 s before SIGTERM: it ends within EXIT_BUDGET_S as "unanswered" (exit 0, logged UNVERIFIED). The gazebo teardown case: the
+    manager inside gz sim stops answering at the signal and gz lives on (M07 on ROS 2 Jazzy)."""
     make_active(guard)
 
     class Silent(ScriptedExecutor):
@@ -295,7 +303,8 @@ def test_a_silent_manager_still_in_the_graph_ends_the_exit_within_its_budget(gua
             time.sleep(timeout_sec or 0.0)          # nothing ever answers
 
     started = time.monotonic()
-    assert guard.deactivate_for_exit(Silent(guard)) == "failed"
+    assert guard.deactivate_for_exit(Silent(guard)) == "unanswered"
+    assert node_module.EXIT_CODES["unanswered"] == 0
     took = time.monotonic() - started
     assert took <= node_module.EXIT_BUDGET_S + 0.5 < 5.0, f"the exit took {took:.2f} s"
 

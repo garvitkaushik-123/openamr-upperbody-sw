@@ -64,8 +64,8 @@ EXIT_POLL_S = 0.1           # while an exit request is unanswered, how often the
 # The whole exit, every round included: below the launch's 5 s before it escalates SIGINT to SIGTERM. A manager that crashed can stay in
 # the graph (its participant never said goodbye), so "gone" is not seen and the rounds would otherwise run on (seen with a crashed gz server).
 EXIT_BUDGET_S = 4.0
-EXIT_OUTCOMES = ("confirmed", "manager_gone", "failed")
-EXIT_CODES = {"confirmed": 0, "manager_gone": 0, "failed": 1}
+EXIT_OUTCOMES = ("confirmed", "manager_gone", "unanswered", "failed")
+EXIT_CODES = {"confirmed": 0, "manager_gone": 0, "unanswered": 0, "failed": 1}
 
 
 class LiftGuard(Node):
@@ -252,7 +252,13 @@ class LiftGuard(Node):
                           controller cannot run without its manager, and the manager deactivates every controller when it shuts down
                           (controller_manager shutdown_controllers, seen in the mock stack's log). The guard did not see it: it says so,
                           as UNVERIFIED by the guard;
-          "failed"        the manager is still in the graph but did not confirm within EXIT_ATTEMPTS rounds and EXIT_BUDGET_S.
+          "unanswered"    the manager is still in the graph but answered none of the exit's requests. At a launch teardown it gets the
+                          same signal: in gazebo the manager runs inside gz sim, its ROS interface stops at the signal while the process
+                          lives on for seconds (M07 on ROS 2 Jazzy: "Deactivated controllers: [ lift_controller ]" in gz's log, the reply
+                          never arrived, gz was SIGTERMed 5 s later). A manager that answers nobody cannot move the lift for anyone
+                          either. UNVERIFIED by the guard, exit 0;
+          "failed"        the manager answered, but never confirmed lift_controller inactive (a refused deactivation, or still listed
+                          active) within EXIT_ATTEMPTS rounds and EXIT_BUDGET_S. Exit 1.
 
         First the shutdown state: from here on nothing polls, decides or switches (the timer is cancelled and step, drive, poll and on_list
         return at once), so no callback that runs while this waits can ask for an activation; a switch already sent is no longer tracked and
@@ -265,6 +271,7 @@ class LiftGuard(Node):
         self.switches_sent += 1
         self.switch_future = None
         deadline = time.monotonic() + EXIT_BUDGET_S
+        answered = False
         for attempt in range(1, EXIT_ATTEMPTS + 1):
             if self.manager_gone():
                 return self.exit_report("manager_gone")
@@ -276,10 +283,12 @@ class LiftGuard(Node):
                 continue
             response = self.call_and_wait(executor, self.switch_client,
                                           self.switch_request("inactive", SwitchController.Request.BEST_EFFORT), deadline)
+            answered = answered or response is not None
             if response is None or not response.ok:
                 self.exit_note(f"round {attempt}: no ok answer to the deactivation")
                 continue
             listed = self.call_and_wait(executor, self.list_client, ListControllers.Request(), deadline)
+            answered = answered or listed is not None
             if listed is None:
                 self.exit_note(f"round {attempt}: list_controllers did not answer")
                 continue
@@ -287,7 +296,9 @@ class LiftGuard(Node):
             if not states or states[0] != "active":
                 return self.exit_report("confirmed", states[0] if states else "absent")
             self.exit_note(f"round {attempt}: {self.controller_name} still active")
-        return self.exit_report("manager_gone" if self.manager_gone() else "failed")
+        if self.manager_gone():
+            return self.exit_report("manager_gone")
+        return self.exit_report("failed" if answered else "unanswered")
 
     def exit_note(self, text):
         print(f"lift_guard: exit deactivation, {text}", file=sys.stderr, flush=True)
@@ -297,7 +308,9 @@ class LiftGuard(Node):
             "confirmed": f"{self.controller_name} confirmed {state} at exit",
             "manager_gone": f"the controller manager {self.manager} has gone: {self.controller_name} stopped with it (the manager "
                             "deactivates its controllers when it shuts down). UNVERIFIED by the guard",
-            "failed": f"{self.controller_name} NOT confirmed inactive at exit, and the controller manager is still in the graph",
+            "unanswered": f"the controller manager {self.manager} is in the graph but answered none of the exit's requests (it is "
+                          f"stopping too): {self.controller_name} UNVERIFIED by the guard",
+            "failed": f"{self.controller_name} NOT confirmed inactive at exit: the controller manager answered but did not confirm it",
         }
         print(f"lift_guard: {messages[outcome]}", file=sys.stderr, flush=True)
         return outcome
