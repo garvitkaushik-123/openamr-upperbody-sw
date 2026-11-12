@@ -23,12 +23,15 @@ Output:
 
 Exit. On SIGINT or SIGTERM the node stops deciding (no activation can be asked from then on), deactivates lift_controller itself (best
 effort, so an already inactive controller is not an error) and confirms with list_controllers that it is not active, before it exits 0:
-the controller is inactive no later than the guard's exit (accepted on #44). Not confirmed: exit 1.
+the controller is inactive no later than the guard's exit (accepted on #44). If the controller manager has already left the ROS graph (a
+normal teardown stops both, often the manager first), lift_controller stopped with it: exit 0, logged as UNVERIFIED by the guard. If the
+manager is still there but never confirms: exit 1.
 A death without a signal it can handle (SIGKILL, a crash) is covered by the launch's OnProcessExit handler. Nothing covers a guard that
 hangs, and this node claims nothing about it.
 """
 import signal
 import sys
+import time
 
 import rclpy
 from action_msgs.msg import GoalStatusArray
@@ -55,6 +58,13 @@ LATCHED = QoSProfile(history=HistoryPolicy.KEEP_LAST, depth=1, reliability=Relia
                      durability=DurabilityPolicy.TRANSIENT_LOCAL)
 SPIN_PERIOD_S = 0.02        # how often the main loop looks at the stop flag between callbacks
 EXIT_ATTEMPTS = 3           # deactivate-and-confirm rounds at exit before giving up (the launch handler is the fallback)
+EXIT_SERVICE_WAIT_S = 0.5   # how long one exit round waits for switch_controller before it looks at the graph again
+EXIT_POLL_S = 0.1           # while an exit request is unanswered, how often the graph is checked for the manager
+# The whole exit, every round included: below the launch's 5 s before it escalates SIGINT to SIGTERM. A manager that crashed can stay in
+# the graph (its participant never said goodbye), so "gone" is not seen and the rounds would otherwise run on (seen with a crashed gz server).
+EXIT_BUDGET_S = 4.0
+EXIT_OUTCOMES = ("confirmed", "manager_gone", "failed")
+EXIT_CODES = {"confirmed": 0, "manager_gone": 0, "failed": 1}
 
 
 class LiftGuard(Node):
@@ -94,6 +104,7 @@ class LiftGuard(Node):
         self.last_codes = None
 
         manager = self.get_parameter("controller_manager").value.rstrip("/")
+        self.manager = manager if manager.startswith("/") else "/" + manager
         self.list_client = self.create_client(ListControllers, manager + "/list_controllers")
         self.switch_client = self.create_client(SwitchController, manager + "/switch_controller")
         self.status_publisher = self.create_publisher(DiagnosticStatus, STATUS_TOPIC, LATCHED)
@@ -213,47 +224,82 @@ class LiftGuard(Node):
         if target is not None:
             self.switch(target)
 
-    def call_and_wait(self, executor, client, request):
+    def call_and_wait(self, executor, client, request, deadline=None):
+        """The answer to `request`, or None after switch_timeout_s + 1 s, or as soon as the controller manager has left the graph (a
+        teardown that stopped it first leaves nothing to answer, and waiting out the timeout would push the guard toward the launch's
+        SIGTERM escalation)."""
         future = client.call_async(request)
-        executor.spin_until_future_complete(future, timeout_sec=self.switch_timeout_s + 1.0)
+        end = time.monotonic() + self.switch_timeout_s + 1.0
+        if deadline is not None:
+            end = min(end, deadline)
+        while not future.done() and time.monotonic() < end:
+            executor.spin_until_future_complete(future, timeout_sec=EXIT_POLL_S)
+            if not future.done() and self.manager_gone():
+                break
         return future.result() if future.done() else None
 
+    def manager_gone(self):
+        """True when no node of the controller manager's name is in the ROS graph any more (it has exited)."""
+        namespace, _, name = self.manager.rpartition("/")
+        return (name, namespace or "/") not in set(self.get_node_names_and_namespaces())
+
     def deactivate_for_exit(self, executor):
-        """Leave lift_controller inactive before the process exits (accepted on #44; review of #53, P1).
+        """Leave lift_controller inactive before the process exits (accepted on #44; review of #53). Returns one of EXIT_OUTCOMES:
+
+          "confirmed"     the controller manager answered the deactivation ok and lists lift_controller as not active;
+          "manager_gone"  the controller manager has left the ROS graph (a normal teardown stops it with the guard, and often first). A
+                          controller cannot run without its manager, and the manager deactivates every controller when it shuts down
+                          (controller_manager shutdown_controllers, seen in the mock stack's log). The guard did not see it: it says so,
+                          as UNVERIFIED by the guard;
+          "failed"        the manager is still in the graph but did not confirm within EXIT_ATTEMPTS rounds and EXIT_BUDGET_S.
 
         First the shutdown state: from here on nothing polls, decides or switches (the timer is cancelled and step, drive, poll and on_list
-        return at once), so no callback that runs while this waits can ask for an activation. A switch already sent is no longer tracked and
-        list answers requested before now are dropped. Then, up to EXIT_ATTEMPTS times: ask to deactivate (best effort, so an already
-        inactive controller is not an error), and confirm with list_controllers that lift_controller is not active. An activation sent before
-        the shutdown is answered by the controller manager before this deactivation (same client, in order); if one still shows active, the
-        round repeats. Returns True only when the controller is confirmed not active."""
+        return at once), so no callback that runs while this waits can ask for an activation; a switch already sent is no longer tracked and
+        list answers requested before now are dropped. Then, each round: stop if the manager has gone; ask to deactivate (best effort, so an
+        already inactive controller is not an error); confirm with list_controllers that lift_controller is not active. An activation sent
+        before the shutdown is answered by the manager before this deactivation (same client, in order); if one still shows active, the
+        round repeats."""
         self.exiting = True
         self.status_timer.cancel()
         self.switches_sent += 1
         self.switch_future = None
-        if not self.switch_client.wait_for_service(timeout_sec=self.switch_timeout_s):
-            print("lift_guard: switch_controller not available at exit; the launch's exit handler deactivates lift_controller",
-                  file=sys.stderr, flush=True)
-            return False
+        deadline = time.monotonic() + EXIT_BUDGET_S
         for attempt in range(1, EXIT_ATTEMPTS + 1):
-            response = self.call_and_wait(executor, self.switch_client,
-                                          self.switch_request("inactive", SwitchController.Request.BEST_EFFORT))
-            if response is None or not response.ok:
-                print(f"lift_guard: exit deactivation, round {attempt}: no ok answer", file=sys.stderr, flush=True)
+            if self.manager_gone():
+                return self.exit_report("manager_gone")
+            if time.monotonic() >= deadline:
+                self.exit_note(f"the {EXIT_BUDGET_S:g} s exit budget is spent")
+                break
+            if not self.switch_client.wait_for_service(timeout_sec=min(EXIT_SERVICE_WAIT_S, max(0.0, deadline - time.monotonic()))):
+                self.exit_note(f"round {attempt}: switch_controller not available")
                 continue
-            listed = self.call_and_wait(executor, self.list_client, ListControllers.Request())
+            response = self.call_and_wait(executor, self.switch_client,
+                                          self.switch_request("inactive", SwitchController.Request.BEST_EFFORT), deadline)
+            if response is None or not response.ok:
+                self.exit_note(f"round {attempt}: no ok answer to the deactivation")
+                continue
+            listed = self.call_and_wait(executor, self.list_client, ListControllers.Request(), deadline)
             if listed is None:
-                print(f"lift_guard: exit deactivation, round {attempt}: list_controllers did not answer", file=sys.stderr, flush=True)
+                self.exit_note(f"round {attempt}: list_controllers did not answer")
                 continue
             states = [c.state for c in listed.controller if c.name == self.controller_name]
             if not states or states[0] != "active":
-                print(f"lift_guard: {self.controller_name} confirmed {states[0] if states else 'absent'} at exit", file=sys.stderr,
-                      flush=True)
-                return True
-            print(f"lift_guard: exit deactivation, round {attempt}: {self.controller_name} still active", file=sys.stderr, flush=True)
-        print(f"lift_guard: {self.controller_name} not confirmed inactive at exit; the launch's exit handler is the fallback",
-              file=sys.stderr, flush=True)
-        return False
+                return self.exit_report("confirmed", states[0] if states else "absent")
+            self.exit_note(f"round {attempt}: {self.controller_name} still active")
+        return self.exit_report("manager_gone" if self.manager_gone() else "failed")
+
+    def exit_note(self, text):
+        print(f"lift_guard: exit deactivation, {text}", file=sys.stderr, flush=True)
+
+    def exit_report(self, outcome, state=None):
+        messages = {
+            "confirmed": f"{self.controller_name} confirmed {state} at exit",
+            "manager_gone": f"the controller manager {self.manager} has gone: {self.controller_name} stopped with it (the manager "
+                            "deactivates its controllers when it shuts down). UNVERIFIED by the guard",
+            "failed": f"{self.controller_name} NOT confirmed inactive at exit, and the controller manager is still in the graph",
+        }
+        print(f"lift_guard: {messages[outcome]}", file=sys.stderr, flush=True)
+        return outcome
 
     # --- the decision and the status ------------------------------------------------------------------------------------------------------
     def step(self, periodic=False):
@@ -302,18 +348,18 @@ def main(argv=None):
         print(f"lift_guard: refusing to start: {err}", file=sys.stderr, flush=True)
         rclpy.try_shutdown()
         return 2
-    deactivated = False
+    outcome = "failed"
     executor = SingleThreadedExecutor()
     executor.add_node(node)
     try:
         while stop.signal is None and rclpy.ok():
             executor.spin_once(timeout_sec=SPIN_PERIOD_S)
-        deactivated = node.deactivate_for_exit(executor)
+        outcome = node.deactivate_for_exit(executor)
     finally:
         executor.remove_node(node)
         node.destroy_node()
         rclpy.try_shutdown()
-    return 0 if deactivated else 1
+    return EXIT_CODES[outcome]
 
 
 if __name__ == "__main__":

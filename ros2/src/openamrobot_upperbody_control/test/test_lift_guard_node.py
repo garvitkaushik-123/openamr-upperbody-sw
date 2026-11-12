@@ -90,6 +90,8 @@ def guard(node_module, tmp_path):
     clock = {"t": 100.0}
     node.now = lambda: clock["t"]
     node.clock = clock
+    node.gone = {"value": False}                    # no real controller manager in this graph: the test says whether it has gone
+    node.manager_gone = lambda: node.gone["value"]
     yield node
     node.destroy_node()
     rclpy.shutdown()
@@ -242,7 +244,7 @@ def test_no_activation_is_asked_once_the_exit_begins(guard):
     asked for an activation and still reported success."""
     make_active(guard)
     start = len(guard.switch_client.calls)
-    assert guard.deactivate_for_exit(ScriptedExecutor(guard, between="inactive", confirm=("inactive",))) is True
+    assert guard.deactivate_for_exit(ScriptedExecutor(guard, between="inactive", confirm=("inactive",))) == "confirmed"
     sent = switches_since(guard, start)
     assert sent and all(not list(r.activate_controllers) for r in sent), [list(r.activate_controllers) for r in sent]
     assert list(sent[0].deactivate_controllers) == ["lift_controller"]
@@ -263,14 +265,14 @@ def test_an_activation_in_flight_at_exit_cannot_leave_the_controller_active(guar
         if not in_flight[1].done():
             in_flight[1].set_result(SwitchController.Response(ok=True, message=""))
 
-    assert guard.deactivate_for_exit(ScriptedExecutor(guard, before=manager_answers_the_activation, confirm=("inactive",))) is True
+    assert guard.deactivate_for_exit(ScriptedExecutor(guard, before=manager_answers_the_activation, confirm=("inactive",))) == "confirmed"
     assert all(not list(r.activate_controllers) for r in switches_since(guard, start))
 
 
 def test_still_active_after_the_exit_deactivation_repeats_it(guard):
     make_active(guard)
     start = len(guard.switch_client.calls)
-    assert guard.deactivate_for_exit(ScriptedExecutor(guard, confirm=("active", "inactive"))) is True
+    assert guard.deactivate_for_exit(ScriptedExecutor(guard, confirm=("active", "inactive"))) == "confirmed"
     sent = switches_since(guard, start)
     assert [list(r.deactivate_controllers) for r in sent] == [["lift_controller"], ["lift_controller"]]
 
@@ -278,8 +280,48 @@ def test_still_active_after_the_exit_deactivation_repeats_it(guard):
 def test_never_confirmed_inactive_is_not_a_clean_exit(guard, node_module):
     make_active(guard)
     start = len(guard.switch_client.calls)
-    assert guard.deactivate_for_exit(ScriptedExecutor(guard, confirm=("active",))) is False
+    assert guard.deactivate_for_exit(ScriptedExecutor(guard, confirm=("active",))) == "failed"
     assert len(switches_since(guard, start)) == node_module.EXIT_ATTEMPTS
+    assert node_module.EXIT_CODES["failed"] != 0
+
+
+def test_a_silent_manager_still_in_the_graph_ends_the_exit_within_its_budget(guard, node_module):
+    """A manager that crashed can stay in the graph and never answer (seen with a crashed gz server). The exit must not outlast the
+    launch's 5 s before SIGTERM: it ends within EXIT_BUDGET_S as "failed" (exit 1, the honest result: nothing was confirmed)."""
+    make_active(guard)
+
+    class Silent(ScriptedExecutor):
+        def spin_until_future_complete(self, future, timeout_sec=None):
+            time.sleep(timeout_sec or 0.0)          # nothing ever answers
+
+    started = time.monotonic()
+    assert guard.deactivate_for_exit(Silent(guard)) == "failed"
+    took = time.monotonic() - started
+    assert took <= node_module.EXIT_BUDGET_S + 0.5 < 5.0, f"the exit took {took:.2f} s"
+
+
+def test_a_manager_already_gone_ends_the_exit_at_once_as_unverified(guard, node_module, capsys):
+    """A normal teardown stops the controller manager with the guard, often first (#60's run, the mock stack's log): the controller stopped
+    with its manager. Nothing is asked of a manager that is not there; exit 0, and the log says UNVERIFIED by the guard."""
+    make_active(guard)
+    start = len(guard.switch_client.calls)
+    guard.gone["value"] = True
+    assert guard.deactivate_for_exit(ScriptedExecutor(guard)) == "manager_gone"
+    assert switches_since(guard, start) == []
+    assert node_module.EXIT_CODES["manager_gone"] == 0
+    assert "UNVERIFIED by the guard" in capsys.readouterr().err
+
+
+def test_a_manager_that_leaves_during_the_exit_ends_it_as_unverified(guard):
+    """The deactivation goes unanswered (the manager is shutting down) and the manager then leaves the graph."""
+    make_active(guard)
+
+    class ManagerLeaves(ScriptedExecutor):
+        def spin_until_future_complete(self, future, timeout_sec=None):
+            guard.gone["value"] = True              # nothing answers; by the next round the manager has gone
+
+    assert guard.deactivate_for_exit(ManagerLeaves(guard)) == "manager_gone"
+    assert len(guard.switch_client.calls) and list(guard.switch_client.calls[-1][0].deactivate_controllers) == ["lift_controller"]
 
 
 def test_nothing_is_decided_or_published_once_exiting(guard):
@@ -299,7 +341,7 @@ class FakeControllerManager(Node):
     base (/odom): everything the guard needs to activate lift_controller, and to try again, if it could, while it exits."""
 
     def __init__(self, safe_inputs=False):
-        super().__init__("fake_controller_manager")
+        super().__init__("controller_manager")      # the real manager's name: the guard looks for it in the graph at exit
         self.state = "inactive"
         self.switches = []                          # (request, time answered)
         self.create_service(SwitchController, "/controller_manager/switch_controller", self.on_switch)
@@ -341,6 +383,35 @@ def manager(request):
     yield node
     node.destroy_node()
     rclpy.shutdown()
+
+
+def test_when_the_manager_stops_first_the_guard_exits_0_and_says_unverified(tmp_path):
+    """The teardown order seen in #60 and in the mock stack: the controller manager exits before the guard. The guard must not wait out
+    every round against a manager that has left the graph, nor exit 1 (every process's exit code is checked, P24)."""
+    rclpy.init()
+    manager = FakeControllerManager(safe_inputs=True)
+    child = subprocess.Popen([sys.executable, NODE_SCRIPT, "--ros-args", "--params-file", params_file(tmp_path)],
+                             stderr=subprocess.PIPE, text=True)
+    try:
+        spin_for(manager, 30.0, until=lambda: manager.state == "active")
+        assert manager.state == "active", "the guard never activated lift_controller with safe inputs"
+        manager.destroy_node()                      # the manager stops first
+        observer = Node("observer")
+        end = time.monotonic() + 15.0
+        while time.monotonic() < end and ("controller_manager", "/") in observer.get_node_names_and_namespaces():
+            rclpy.spin_once(observer, timeout_sec=0.1)
+        child.send_signal(signal.SIGTERM)
+        started = time.monotonic()
+        _, err = child.communicate(timeout=20.0)
+        took = time.monotonic() - started
+    finally:
+        if child.poll() is None:
+            child.kill()
+            child.wait()
+        rclpy.shutdown()
+    assert child.returncode == 0, err
+    assert "UNVERIFIED by the guard" in err, err
+    assert took < 5.0, f"the guard took {took:.1f} s to exit with the manager gone (launch escalates to SIGTERM after 5 s)"
 
 
 def spin_for(node, seconds, until=lambda: False):

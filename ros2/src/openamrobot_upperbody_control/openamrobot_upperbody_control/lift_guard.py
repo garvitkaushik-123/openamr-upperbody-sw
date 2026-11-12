@@ -266,8 +266,12 @@ def activation_overdue(codes, controller_state, activating_since, now, timeout_s
     """(activating_since, overdue) for the WARN "activating" state: nothing blocks but lift_controller is not listed active.
 
     `activating_since` is when that state began (None when not in it). Overdue once it has lasted longer than `timeout_s`: the node then
-    reports SWITCH_FAILED (ERROR) instead of staying in WARN, e.g. when the switch service is not there to answer."""
-    if codes or controller_state == "active":
+    reports SWITCH_FAILED (ERROR) instead of staying in WARN, e.g. when the switch service is not there to answer.
+
+    The clock runs only while lift_controller is listed "inactive", i.e. while an activation can be asked. Before the controller manager
+    lists it at all (its spawner is still loading it; seen in the mock stack, about 3 s after the arms were parked) nothing can be switched,
+    so nothing has failed: it stays WARN, as #60's P7 also counts WARN only once the controller has been seen."""
+    if codes or controller_state != "inactive":
         return None, False
     since = now if activating_since is None else activating_since
     return since, now - since > timeout_s
@@ -288,6 +292,8 @@ def build_status(codes, controller_state):
         state = "active" if listed_active else "inactive"
     elif listed_active:
         level, message, state = LEVEL_OK, "lift allowed", "active"
-    else:
+    elif controller_state == "inactive":
         level, message, state = LEVEL_WARN, "lift allowed by the guard; switching lift_controller on", "activating"
+    else:
+        level, message, state = LEVEL_WARN, "lift allowed by the guard; waiting for lift_controller to be loaded", "activating"
     return level, STATUS_NAME, message, [("lift_controller", state), ("blocking", ",".join(codes))]

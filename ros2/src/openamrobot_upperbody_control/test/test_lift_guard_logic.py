@@ -358,6 +358,17 @@ def test_switching_on_turns_into_switch_failed_after_the_timeout():
     since, overdue = lg.activation_overdue((), "inactive", None, 10.0, 2.0)
     assert (since, overdue) == (10.0, False), "the activating state starts now"
     assert lg.activation_overdue((), "inactive", since, 12.0, 2.0) == (10.0, False), "on the timeout is not past it"
-    assert lg.activation_overdue((), None, since, 12.01, 2.0) == (10.0, True)
+    assert lg.activation_overdue((), "inactive", since, 12.01, 2.0) == (10.0, True)
     assert lg.activation_overdue((), "active", since, 50.0, 2.0) == (None, False), "active ends it"
     assert lg.activation_overdue((lg.BASE_MOVING,), "inactive", since, 50.0, 2.0) == (None, False), "a block ends it"
+
+
+@pytest.mark.parametrize("listed", [None, "unconfigured"])
+def test_no_switch_failed_while_lift_controller_is_not_loaded_yet(listed):
+    """Nothing can be switched before the controller manager lists lift_controller (its spawner is still loading it): no clock, no
+    SWITCH_FAILED, however long; still WARN, and the message says what it waits for."""
+    assert lg.activation_overdue((), listed, None, 10.0, 2.0) == (None, False)
+    assert lg.activation_overdue((), listed, 10.0, 99.0, 2.0) == (None, False)
+    level, _, message, values = lg.build_status((), listed)
+    assert (level, values) == (lg.LEVEL_WARN, [("lift_controller", "activating"), ("blocking", "")])
+    assert "waiting for lift_controller to be loaded" in message
