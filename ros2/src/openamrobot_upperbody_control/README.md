@@ -34,7 +34,9 @@ Wiring (`openamrobot_upperbody_control/lift_guard_launch.py`, used by `mock.laun
 spawned `--inactive`; the guard runs with an `OnProcessExit` handler that deactivates `lift_controller` (SIGKILL, crash);
 `park_arms.py` moves both arms to `park` once at start-up; in mock `lift_guard_odom_stub.py` publishes `/odom`.
 `wait_for_lift_guard.py` sends the start-up goal of `moveit.launch.py lift_position:=X` once the guard reports OK. Every helper exits 0
-on SIGINT/SIGTERM (`ros_exit.py`), as every process of a launch must at teardown. The real profile has no guard.
+on SIGINT/SIGTERM (`ros_exit.py`), as every process of a launch must at teardown, and ends with `os._exit` without destroying its node:
+destroying the DDS participant can deadlock in rmw_fastrtps and the launch then SIGKILLs the process (`ros_exit.py` has the evidence).
+`park_arms.py` counts a park goal that a newer goal replaced as not failed. The real profile has no guard.
 
 ## The gripper controller's deprecation warning: do not "fix" it
 

@@ -74,6 +74,20 @@ EXPECTED_PROCESSES = ["gazebo", "robot_state_publisher", "parameter_bridge", "cr
 
 CONTROLLERS = ("joint_state_broadcaster", "left_arm_controller", "right_arm_controller",
                "left_gripper_controller", "right_gripper_controller")
+PARK_WITHIN_S = 60.0     # the start-up move (park_arms.py, issue #44) takes 3 s of sim time once the arm controllers are active
+PARK_SETTLED = 0.005     # rad: the position controllers track park closely in gz; well inside TRACK_TOLERANCE
+PARK_STILL = 1e-4        # rad between two /joint_states samples
+
+
+def _park_pose():
+    """{joint: position} of `park` for both arms, from the SRDF the start-up move reads."""
+    from openamrobot_upperbody_control.lift_guard import stowed_poses_from_srdf
+    from openamrobot_upperbody_moveit.moveit_config import srdf_path
+    with open(srdf_path()) as f:
+        poses = stowed_poses_from_srdf(f.read(), ["park"])
+    return {joint: value for side in poses for joint, value in poses[side][0].items()}
+
+
 LEFT = [f"openarm_left_joint{n}" for n in range(1, 8)]
 RIGHT = [f"openarm_right_joint{n}" for n in range(1, 8)]
 FINGERS = ["openarm_left_finger_joint1", "openarm_right_finger_joint1"]
@@ -140,6 +154,15 @@ class TestGazeboSmoke(unittest.TestCase):
                 on_tick()
             rclpy.spin_once(self.node, timeout_sec=0.05)
 
+    def _settled_at(self, pose):
+        """Every arm joint within PARK_SETTLED of `pose`, and the last two /joint_states samples PARK_STILL apart."""
+        if not all(j in self.joint_states for j in pose) or any(abs(self.joint_states[j] - pose[j]) > PARK_SETTLED for j in pose):
+            self._park_last = None
+            return False
+        now = {j: self.joint_states[j] for j in pose}
+        last, self._park_last = getattr(self, "_park_last", None), now
+        return last is not None and all(abs(now[j] - last[j]) <= PARK_STILL for j in pose)
+
     def _controller_states(self):
         future = self.list_controllers.call_async(ListControllers.Request())
         self._spin_until(future.done, 2.0)
@@ -168,6 +191,11 @@ class TestGazeboSmoke(unittest.TestCase):
     def test_g01_2_an_arm_goal_completes_and_only_that_arm_moves(self):
         self.assertTrue(self._spin_until(lambda: all(j in self.joint_states for j in LEFT + RIGHT + WHEELS), 20.0),
                         "/joint_states never listed all arm and wheel joints")
+        # issue #44: park_arms.py moves both arms from home to park at start-up (joint4 0.1 rad). Measure only once both are there and
+        # still, or the right arm's start-up move reads as "moved by the left arm's goal".
+        park = _park_pose()
+        self.assertTrue(self._spin_until(lambda: self._settled_at(park), PARK_WITHIN_S),
+                        f"the arms did not settle at park within {PARK_WITHIN_S:.0f} s of the start-up move")
         right_before = {j: self.joint_states[j] for j in RIGHT}
         base_before = self._base_xy()
         target = {j: ARM_TARGET.get(j, 0.0) for j in LEFT}

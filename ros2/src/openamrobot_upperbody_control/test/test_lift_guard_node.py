@@ -447,3 +447,40 @@ def test_on_a_signal_the_guard_deactivates_lift_controller_before_it_exits(manag
     assert list(request.deactivate_controllers) == ["lift_controller"] and not list(request.activate_controllers)
     assert request.strictness == SwitchController.Request.BEST_EFFORT
     assert answered_at <= exited_at and manager.state == "inactive"
+
+
+# --- park_arms.py: a goal another command replaced is not a failure (full colcon run, L01 and G01) ---------------------------------------
+def _park_arms():
+    spec = importlib.util.spec_from_file_location("park_arms_under_test", os.path.join(HERE, os.pardir, "scripts", "park_arms.py"))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+@pytest.mark.parametrize("code, text, ok", [
+    (0, "", True),
+    # joint_trajectory_controller's own strings (Jazzy 4.x), seen when L01's goal arrived 0.1 s before park's ended:
+    (-1, "Current goal preempted by new incoming action.", True),
+    (-1, "Current goal cancelled during deactivate transition.", True),
+    (-1, "Joints on incoming goal don't match the controller joints.", False),
+    (-4, "Aborted due to path tolerance violation", False),
+    (-5, "Aborted due to goal tolerance violation", False),
+])
+def test_park_arms_counts_a_superseded_goal_as_not_failed(code, text, ok):
+    from control_msgs.action import FollowJointTrajectory
+    result = FollowJointTrajectory.Result(error_code=code, error_string=text)
+    assert _park_arms().result_outcome(result)[0] is ok
+
+
+# --- ros_exit.exit_process: the helpers end without destroying the DDS participant (Fast DDS deadlock at destroy_participant) -----------
+@pytest.mark.parametrize("code", [0, 1, 2])
+def test_exit_process_exits_with_the_code_and_flushes_what_was_printed(code):
+    script = ("from openamrobot_upperbody_control.ros_exit import exit_process\n"
+              "import rclpy\nfrom rclpy.node import Node\n"
+              "rclpy.init()\nnode = Node('exit_process_probe')\n"      # a live node and participant, as in the helpers
+              "print('before exit', end='')\n"
+              f"exit_process({code})\n"
+              "print('not reached')\n")
+    done = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, timeout=30)
+    assert done.returncode == code, done.stderr
+    assert done.stdout == "before exit"

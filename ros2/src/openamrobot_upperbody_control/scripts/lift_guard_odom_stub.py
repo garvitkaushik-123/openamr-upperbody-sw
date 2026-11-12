@@ -12,14 +12,13 @@ odometry as unsafe. This node stands in for it. Accepted on #44:
   - std_srvs/SetBool on /lift_guard_odom_stub/enable: false stops publishing (odometry loss), true resumes it.
 Not for gazebo, where the DiffDrive plugin publishes /odom, and never for the real profile.
 """
-import sys
 
 import rclpy
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
 from std_srvs.srv import SetBool
 
-from openamrobot_upperbody_control.ros_exit import spin_until_shutdown
+from openamrobot_upperbody_control.ros_exit import exit_process, spin_until_shutdown
 
 NODE_NAME = "lift_guard_odom_stub"
 TOPIC = "/odom"
@@ -65,12 +64,8 @@ class OdomStub(Node):
 def main(argv=None):
     rclpy.init(args=argv)
     node = OdomStub()
-    try:
-        return spin_until_shutdown(node)          # 0 on SIGINT/SIGTERM (P24)
-    finally:
-        node.destroy_node()
-        rclpy.try_shutdown()
+    return spin_until_shutdown(node)              # 0 on SIGINT/SIGTERM (P24); no destroy_node: see ros_exit.exit_process
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    exit_process(main())

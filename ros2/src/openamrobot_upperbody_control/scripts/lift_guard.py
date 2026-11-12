@@ -47,6 +47,7 @@ from rclpy.signals import SignalHandlerOptions
 from sensor_msgs.msg import JointState
 
 from openamrobot_upperbody_control import lift_guard as lg
+from openamrobot_upperbody_control.ros_exit import exit_process
 
 STATUS_TOPIC = "/lift_guard/status"
 # The arm controllers of arm_controllers.yaml (and moveit_controllers.yaml, action_ns follow_joint_trajectory).
@@ -351,16 +352,11 @@ def main(argv=None):
     outcome = "failed"
     executor = SingleThreadedExecutor()
     executor.add_node(node)
-    try:
-        while stop.signal is None and rclpy.ok():
-            executor.spin_once(timeout_sec=SPIN_PERIOD_S)
-        outcome = node.deactivate_for_exit(executor)
-    finally:
-        executor.remove_node(node)
-        node.destroy_node()
-        rclpy.try_shutdown()
-    return EXIT_CODES[outcome]
+    while stop.signal is None and rclpy.ok():
+        executor.spin_once(timeout_sec=SPIN_PERIOD_S)
+    outcome = node.deactivate_for_exit(executor)
+    return EXIT_CODES[outcome]                    # no destroy_node or shutdown: see ros_exit.exit_process
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    exit_process(main())

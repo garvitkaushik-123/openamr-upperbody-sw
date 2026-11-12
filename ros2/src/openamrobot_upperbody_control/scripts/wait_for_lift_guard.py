@@ -14,7 +14,6 @@ rejected or failed; 0 when a shutdown stops it first (every process of a launch 
 `ros2 action send_goal`, which a teardown during the goal made exit 1 ("Executor is already spinning"; #60's L05 in the mock stack).
 """
 import math
-import sys
 import time
 
 import rclpy
@@ -27,7 +26,7 @@ from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile, ReliabilityPolicy
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 
-from openamrobot_upperbody_control.ros_exit import is_clean_stop
+from openamrobot_upperbody_control.ros_exit import exit_process, is_clean_stop
 
 STATUS_TOPIC = "/lift_guard/status"
 LIFT_ACTION = "/lift_controller/follow_joint_trajectory"
@@ -94,10 +93,7 @@ def main(argv=None):
             raise
         print("wait_for_lift_guard: stopped by a shutdown", flush=True)      # a clean stop (P24)
         return 0
-    finally:
-        node.destroy_node()
-        rclpy.try_shutdown()
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    exit_process(main())                          # no destroy_node: see ros_exit.exit_process

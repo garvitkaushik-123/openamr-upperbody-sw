@@ -11,6 +11,12 @@ in mock and in gazebo the launch moves both arm controllers to park once at star
 One FollowJointTrajectory goal per arm controller (left_arm_controller, right_arm_controller), joints openarm_{side}_joint1..7, a single point
 at `duration_s`, positions from the SRDF and zero velocities. A goal rejected because the controller is not active yet is sent again until
 `timeout_s`. Exits 0 when both goals succeed, 1 otherwise (the guard then keeps the lift blocked: the arms are not stowed).
+
+Not failures (exit 0, logged): a goal the controller ended because a newer goal on the same controller replaced it (someone commanded the
+arm during the start-up move, e.g. a test or MoveIt), or because the controller was deactivated (a teardown). JointTrajectoryController
+reports both with the error strings in SUPERSEDED (a preempted goal: aborted, INVALID_GOAL) (Jazzy 4.x); the guard decides "stowed" from the joint
+states either way, so exiting 1 here only failed every launch's exit-code check (P24; seen when L01's goal arrived 0.1 s before park's
+ended).
 """
 import sys
 import time
@@ -24,10 +30,22 @@ from rclpy.node import Node
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 
 from openamrobot_upperbody_control import lift_guard as lg
-from openamrobot_upperbody_control.ros_exit import is_clean_stop
+from openamrobot_upperbody_control.ros_exit import exit_process, is_clean_stop
 
 ARM_CONTROLLERS = {"left": "left_arm_controller", "right": "right_arm_controller"}
 RETRY_S = 0.5
+# JointTrajectoryController's error_string when it ends an accepted goal for a reason other than the goal itself (joint_trajectory_controller,
+# Jazzy 4.x): a newer goal preempted it, or the controller was deactivated.
+SUPERSEDED = ("preempted by new incoming action", "cancelled during deactivate transition")
+
+
+def result_outcome(result):
+    """(ok, detail) for a FollowJointTrajectory result: success, superseded (ok: not park's failure) or failure."""
+    if result.error_code == FollowJointTrajectory.Result.SUCCESSFUL:
+        return True, f"error_code {result.error_code}"
+    if any(s in result.error_string for s in SUPERSEDED):
+        return True, f"superseded, not parked by park_arms: {result.error_string!r}"
+    return False, f"error_code {result.error_code} {result.error_string!r}"
 
 
 def goal_for(side, pose, duration_s):
@@ -63,9 +81,8 @@ def park(node, poses, duration_s, timeout_s):
         if not future.done():
             outcome[side] = (False, f"{ARM_CONTROLLERS[side]}: no result within {timeout_s:g} s")
             continue
-        code = future.result().result.error_code
-        ok = code == FollowJointTrajectory.Result.SUCCESSFUL
-        outcome[side] = (ok, f"{ARM_CONTROLLERS[side]}: error_code {code}")
+        ok, detail = result_outcome(future.result().result)
+        outcome[side] = (ok, f"{ARM_CONTROLLERS[side]}: {detail}")
     return outcome
 
 
@@ -93,13 +110,10 @@ def main(argv=None):
         # A teardown before the arms reached park: a clean stop (P24). The guard never saw them stowed, so the lift stayed blocked.
         print("park_arms: stopped by a shutdown before the arms were parked", flush=True)
         return 0
-    finally:
-        node.destroy_node()
-        rclpy.try_shutdown()
     for side in lg.SIDES:
         print(f"park_arms: {state} {side}: {'ok' if outcome[side][0] else 'FAILED'} ({outcome[side][1]})", flush=True)
     return 0 if all(ok for ok, _ in outcome.values()) else 1
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    exit_process(main())                          # no destroy_node: see ros_exit.exit_process
