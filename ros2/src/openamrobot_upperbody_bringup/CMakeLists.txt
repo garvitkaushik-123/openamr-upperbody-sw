@@ -7,6 +7,7 @@ install(PROGRAMS
   scripts/base_joint_states_stub.py
   scripts/build_a7_evidence.py
   scripts/run_a7_regression.sh
+  scripts/teardown_stress.py
   DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)

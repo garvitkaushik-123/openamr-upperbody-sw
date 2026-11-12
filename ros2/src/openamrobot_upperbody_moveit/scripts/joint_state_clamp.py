@@ -10,7 +10,9 @@ out is published unchanged and logged as an error (not float noise: not this nod
 and the magnitude; every activation is counted. `~/get_stats` (std_srvs/Trigger) returns the counters as JSON in `message`, which is where the
 A7 evidence reads them. Why this exists and what it is not: openamrobot_upperbody_moveit/joint_state_clamp.py.
 """
+import os
 import sys
+import traceback
 import xml.etree.ElementTree as ET
 
 import rclpy
@@ -91,16 +93,32 @@ def run(node, spin=rclpy.spin, context_ok=rclpy.ok):
     return 0
 
 
+def exit_process(code):
+    """Leave now with `code`: flush what was printed, then os._exit, which runs no destructor, so no rmw teardown that can hang.
+
+    Not `node.destroy_node()` + `rclpy.try_shutdown()`: under rmw_fastrtps, destroy_node -> rmw_destroy_node -> destroy_participant ->
+    DomainParticipant::set_listener can loop for good with the GIL held while a Fast DDS discovery thread (PDP::remove_remote_participant)
+    waits on a lock the main thread holds. SIGTERM cannot interrupt it, launch escalates to SIGKILL and the exit is -9 (seen in the sibling
+    base_joint_states_stub.py, M01). The same pattern as the lift guard's exit (issue #44): the OS reclaims the participant."""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.flush()
+        except (OSError, ValueError):
+            pass
+    os._exit(code)
+
+
 def main(argv=None):
     rclpy.init(args=argv)
     node = JointStateClamp()
     try:
-        return run(node)
-    finally:
-        print("joint_state_clamp: final counters: " + node.clamp.summary_json(), flush=True)      # not the logger: its context is gone by now
-        node.destroy_node()          # before the shutdown, always
-        rclpy.try_shutdown()         # a no-op when the signal's handler already did it
+        code = run(node)
+    except BaseException:        # a defect, not a shutdown (run() decides): still an error, with its traceback
+        traceback.print_exc()
+        code = 1
+    print("joint_state_clamp: final counters: " + node.clamp.summary_json(), flush=True)      # not the logger: its context is gone by now
+    exit_process(code)           # never destroy_node(): see exit_process
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()

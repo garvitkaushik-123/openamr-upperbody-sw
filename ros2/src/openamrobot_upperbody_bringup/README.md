@@ -58,7 +58,14 @@ ros2 launch openamrobot_upperbody_bringup moveit.launch.py [base_plate:=bp000] [
 
 `base_joint_states_stub.py` publishes the base's two wheel joints at zero on `/joint_states`, for `mock` only: the base is not under
 `ros2_control` (ADR-003), so nothing there reports them and MoveIt would warn every second that the robot's state is incomplete. The base
-does not move during manipulation (AD-30), so zero is the true state of the wheels. In Gazebo the wheel states come from the simulator.
+does not move during manipulation (AD-30), so zero is the true state of the wheels. In Gazebo the wheel states come from the simulator. On
+SIGINT or SIGTERM it leaves with `os._exit(0)` and does not destroy its node: under `rmw_fastrtps`, `destroy_node()` can hang in Fast DDS's
+participant teardown where SIGTERM cannot reach it, and launch's SIGKILL then fails M01's exit-code check. `teardown_stress.py` reproduces
+that (by default 400 starts, 16 at a time in one domain under CPU load) and exits 0 only when every start exited 0 in time:
+
+```bash
+ros2 run openamrobot_upperbody_bringup teardown_stress.py
+```
 
 **The lift is a planned joint in the simulated profiles (issue #17).** In `mock` and `gazebo`, `lift_joint` has its own `ros2_control`
 system (a position command interface; DOLD V4 limits 800 N and 0.018 m/s, register LIFT), `lift_controller` (a
