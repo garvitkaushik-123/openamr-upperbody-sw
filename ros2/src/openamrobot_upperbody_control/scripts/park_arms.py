@@ -19,10 +19,12 @@ import rclpy
 from builtin_interfaces.msg import Duration
 from control_msgs.action import FollowJointTrajectory
 from rclpy.action import ActionClient
+from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 
 from openamrobot_upperbody_control import lift_guard as lg
+from openamrobot_upperbody_control.ros_exit import is_clean_stop
 
 ARM_CONTROLLERS = {"left": "left_arm_controller", "right": "right_arm_controller"}
 RETRY_S = 0.5
@@ -85,6 +87,12 @@ def main(argv=None):
     except lg.GuardConfigError as err:
         print(f"park_arms: {err}", file=sys.stderr, flush=True)
         return 2
+    except (KeyboardInterrupt, ExternalShutdownException, RuntimeError) as error:
+        if not is_clean_stop(error):
+            raise
+        # A teardown before the arms reached park: a clean stop (P24). The guard never saw them stowed, so the lift stayed blocked.
+        print("park_arms: stopped by a shutdown before the arms were parked", flush=True)
+        return 0
     finally:
         node.destroy_node()
         rclpy.try_shutdown()

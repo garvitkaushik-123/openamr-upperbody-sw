@@ -33,7 +33,8 @@ parameters until the firmware design sets them.
 Wiring (`openamrobot_upperbody_control/lift_guard_launch.py`, used by `mock.launch.py` and `sim.launch.py`): `lift_controller` is
 spawned `--inactive`; the guard runs with an `OnProcessExit` handler that deactivates `lift_controller` (SIGKILL, crash);
 `park_arms.py` moves both arms to `park` once at start-up; in mock `lift_guard_odom_stub.py` publishes `/odom`.
-`wait_for_lift_guard.py` holds `moveit.launch.py lift_position:=X` until the guard reports OK. The real profile has no guard.
+`wait_for_lift_guard.py` sends the start-up goal of `moveit.launch.py lift_position:=X` once the guard reports OK. Every helper exits 0
+on SIGINT/SIGTERM (`ros_exit.py`), as every process of a launch must at teardown. The real profile has no guard.
 
 ## The gripper controller's deprecation warning: do not "fix" it
 

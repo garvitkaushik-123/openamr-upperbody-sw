@@ -115,5 +115,8 @@ def test_the_guard_runs_and_its_exit_deactivates_lift_controller(sim):
     assert len(on_guard_exit) == 1, "no OnProcessExit on the guard: a SIGKILLed guard would leave lift_controller as it was"
     commands = [["".join(getattr(part, "text", "") for part in argument) for argument in action.cmd]
                 for action in on_guard_exit[0].handle(exit_event(guards[0], -9), LaunchContext()) or []]
-    assert ["ros2", "control", "switch_controllers", "--deactivate", "lift_controller", "--best-effort"] in commands, commands
+    deactivations = [c for c in commands if c[-6:] == ["ros2", "control", "switch_controllers", "--deactivate", "lift_controller",
+                                                         "--best-effort"]]
+    assert deactivations, commands
+    assert deactivations[0][0] == "timeout", "the fallback must be bounded: ros2 control waits for a missing manager without end"
     assert not [e for e in description.entities if is_node("lift_guard_odom_stub.py")(e)], "gazebo has the DiffDrive /odom: no stub"

@@ -18,7 +18,7 @@ Args
   head_pitch   hp15 | hp20 | hp25 | hp30 | hp35   (default hp30)
   base_tilt    bt05 | bt10 | bt15        (default bt10)
   lift_position   sim:=mock only. m, where lift_controller takes lift_joint after start-up (one FollowJointTrajectory goal at the
-                  DOLD no-load speed, sent when the controller's action server is up): 0.0 / 0.175 / 0.350 are the calibration stops
+                  DOLD no-load speed, sent once the lift guard allows the lift, #44): 0.0 / 0.175 / 0.350 are the calibration stops
                   L1000 / L1175 / L1350 (default 0.0: nothing is sent, the lift stays at its mock start 0). With sim:=gazebo the lift
                   starts at the same 0.0 and nothing is sent. The A7 scenario does not use this: it PLANS the lift through MoveIt.
   sim             mock | gazebo
@@ -50,16 +50,15 @@ LIFT_SPEED_FRACTION = 0.5       # of the DOLD no-load speed (datum lift_max_velo
 
 
 def lift_to(position, column):
-    """sim:=mock: [] for 0.0, else one `ros2 action send_goal` to lift_controller (it waits for the action server) taking lift_joint from its
-    mock start 0 to `position` (m), refused outside 0 .. the column's stroke. Not a planned motion and not the A7 scenario: a viewing aid.
-    Issue #44: lift_controller is spawned inactive and rejects goals until the lift guard activates it, so the goal is sent only after
-    wait_for_lift_guard.py has seen /lift_guard/status OK; if it never does, nothing is sent and the launch says why."""
+    """sim:=mock: [] for 0.0, else one FollowJointTrajectory goal to lift_controller taking lift_joint from its mock start 0 to `position` (m),
+    refused outside 0 .. the column's stroke. Not a planned motion and not the A7 scenario: a viewing aid.
+    Issue #44: lift_controller is spawned inactive and rejects goals until the lift guard activates it, so the goal is sent by
+    wait_for_lift_guard.py once it has seen /lift_guard/status OK, and it exits 0 at a teardown (`ros2 action send_goal` exited 1 when a
+    teardown interrupted the goal, which every launch test's exit-code check fails on)."""
     if position == 0.0:
         return []
     import math
     import yaml
-    from launch.actions import ExecuteProcess, LogInfo, RegisterEventHandler
-    from launch.event_handlers import OnProcessExit
     share = get_package_share_directory("openamrobot_upperbody_description")
     with open(share + "/config/upperbody_configuration.yaml") as f:
         stroke = yaml.safe_load(f)["column"][column]["stroke"]
@@ -68,16 +67,8 @@ def lift_to(position, column):
     if not 0.0 <= position <= stroke:
         raise RuntimeError(f"lift_position:={position}: lift_joint ranges 0 to {stroke} m")
     seconds = math.ceil(position / (speed * LIFT_SPEED_FRACTION))
-    goal = ("{trajectory: {joint_names: [lift_joint], points: [{positions: [%r], velocities: [0.0], time_from_start: {sec: %d}}]}}"
-            % (position, seconds))
-    send = ExecuteProcess(cmd=["ros2", "action", "send_goal", "/lift_controller/follow_joint_trajectory",
-                               "control_msgs/action/FollowJointTrajectory", goal], output="log")
-    wait = Node(package="openamrobot_upperbody_control", executable="wait_for_lift_guard.py", name="wait_for_lift_guard", output="log")
-    return [wait, RegisterEventHandler(OnProcessExit(
-        target_action=wait,
-        on_exit=lambda event, context: [send] if event.returncode == 0 else
-        [LogInfo(msg=f"lift_position:={position}: the lift guard did not allow the lift (wait_for_lift_guard exited {event.returncode}); "
-                     "no goal sent")]))]
+    return [Node(package="openamrobot_upperbody_control", executable="wait_for_lift_guard.py", name="wait_for_lift_guard", output="log",
+                 parameters=[{"lift_position": float(position), "duration_s": float(seconds)}])]
 
 
 def launch_setup(context, *args, **kwargs):

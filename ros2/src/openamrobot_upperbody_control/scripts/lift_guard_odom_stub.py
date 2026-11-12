@@ -16,9 +16,10 @@ import sys
 
 import rclpy
 from nav_msgs.msg import Odometry
-from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from std_srvs.srv import SetBool
+
+from openamrobot_upperbody_control.ros_exit import spin_until_shutdown
 
 NODE_NAME = "lift_guard_odom_stub"
 TOPIC = "/odom"
@@ -65,13 +66,10 @@ def main(argv=None):
     rclpy.init(args=argv)
     node = OdomStub()
     try:
-        rclpy.spin(node)
-    except (KeyboardInterrupt, ExternalShutdownException):
-        pass
+        return spin_until_shutdown(node)          # 0 on SIGINT/SIGTERM (P24)
     finally:
         node.destroy_node()
         rclpy.try_shutdown()
-    return 0
 
 
 if __name__ == "__main__":

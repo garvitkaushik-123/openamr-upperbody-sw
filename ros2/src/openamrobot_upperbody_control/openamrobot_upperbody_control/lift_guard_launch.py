@@ -24,6 +24,11 @@ from launch_ros.actions import Node
 PACKAGE = "openamrobot_upperbody_control"
 LIFT_CONTROLLER = "lift_controller"
 LIFT_SPAWNER_ARGUMENTS = ("--inactive",)
+# The fallback after a guard dies without handling a signal (SIGKILL, a crash). Bounded: `ros2 control` waits for the controller manager's
+# service without end, and a fallback that never exits would keep the launch alive if the manager were gone too (seen in the mock stack).
+FALLBACK_TIMEOUT_S = "15"
+FALLBACK_COMMAND = ("timeout", "--kill-after=2", FALLBACK_TIMEOUT_S,
+                    "ros2", "control", "switch_controllers", "--deactivate", LIFT_CONTROLLER, "--best-effort")
 PROFILES = {
     "mock": {"arm_state_topic": "/joint_states", "stowed_tolerance": 0.01, "use_sim_time": False, "odom_stub": True},
     "gazebo": {"arm_state_topic": "/arm/joint_states", "stowed_tolerance": 0.01, "use_sim_time": True, "odom_stub": False},
@@ -38,13 +43,13 @@ def _profile(profile):
 
 def lift_guard_actions(profile, srdf):
     """[guard node, its OnProcessExit handler, (mock) odometry stub]. On SIGINT/SIGTERM the guard deactivates lift_controller itself; on any
-    other exit (SIGKILL, a crash) the handler does, through the controller manager (best effort: an inactive controller is not an error)."""
+    other exit (SIGKILL, a crash) the handler does, through the controller manager (best effort: an inactive controller is not an error),
+    bounded by FALLBACK_TIMEOUT_S. During the launch's own shutdown the handler starts nothing (launch does not execute processes then)."""
     settings = _profile(profile)
     guard = Node(package=PACKAGE, executable="lift_guard.py", name="lift_guard", output="screen",
                  parameters=[{"robot_description_semantic": srdf, "arm_state_topic": settings["arm_state_topic"],
                               "stowed_tolerance": settings["stowed_tolerance"], "use_sim_time": settings["use_sim_time"]}])
-    deactivate = ExecuteProcess(cmd=["ros2", "control", "switch_controllers", "--deactivate", LIFT_CONTROLLER, "--best-effort"],
-                                output="screen")
+    deactivate = ExecuteProcess(cmd=list(FALLBACK_COMMAND), output="screen")
     actions = [guard, RegisterEventHandler(OnProcessExit(target_action=guard, on_exit=[deactivate]))]
     if settings["odom_stub"]:
         actions.append(Node(package=PACKAGE, executable="lift_guard_odom_stub.py", name="lift_guard_odom_stub", output="screen"))
