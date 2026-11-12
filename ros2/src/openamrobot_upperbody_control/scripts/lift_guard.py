@@ -21,8 +21,9 @@ Output:
   /lift_guard/status   diagnostic_msgs/DiagnosticStatus, transient local. OK: the lift may move. WARN (blocking empty, lift_controller
                        "activating"): switching on, for at most switch_timeout_s, then SWITCH_FAILED. ERROR: blocked, with the codes.
 
-Exit. On SIGINT or SIGTERM the node deactivates lift_controller itself (best effort, so an already inactive controller is not an error) and
-waits for the answer, up to switch_timeout_s, before it exits: the controller is inactive no later than the guard's exit (accepted on #44).
+Exit. On SIGINT or SIGTERM the node stops deciding (no activation can be asked from then on), deactivates lift_controller itself (best
+effort, so an already inactive controller is not an error) and confirms with list_controllers that it is not active, before it exits 0:
+the controller is inactive no later than the guard's exit (accepted on #44). Not confirmed: exit 1.
 A death without a signal it can handle (SIGKILL, a crash) is covered by the launch's OnProcessExit handler. Nothing covers a guard that
 hangs, and this node claims nothing about it.
 """
@@ -53,6 +54,7 @@ LEVELS = {lg.LEVEL_OK: DiagnosticStatus.OK, lg.LEVEL_WARN: DiagnosticStatus.WARN
 LATCHED = QoSProfile(history=HistoryPolicy.KEEP_LAST, depth=1, reliability=ReliabilityPolicy.RELIABLE,
                      durability=DurabilityPolicy.TRANSIENT_LOCAL)
 SPIN_PERIOD_S = 0.02        # how often the main loop looks at the stop flag between callbacks
+EXIT_ATTEMPTS = 3           # deactivate-and-confirm rounds at exit before giving up (the launch handler is the fallback)
 
 
 class LiftGuard(Node):
@@ -87,6 +89,7 @@ class LiftGuard(Node):
         self.switch_future = None              # (future, target state, sent at)
         self.switches_sent = 0                 # list answers requested before the latest switch are dropped (lift_guard.list_answer_is_current)
         self.activating_since = None           # start of the WARN "activating" state (lift_guard.activation_overdue)
+        self.exiting = False                   # set by deactivate_for_exit: from then on nothing polls, decides or switches
         self.last_status = None
         self.last_codes = None
 
@@ -103,7 +106,7 @@ class LiftGuard(Node):
                                      lambda msg, side=side: self.on_controller_state(side, msg), qos_profile_sensor_data)
             self.create_subscription(GoalStatusArray, f"/{controller}/follow_joint_trajectory/_action/status",
                                      lambda msg, side=side: self.on_goal_status(side, msg), LATCHED)
-        self.create_timer(1.0 / status_rate_hz, self.on_timer)
+        self.status_timer = self.create_timer(1.0 / status_rate_hz, self.on_timer)
         self.get_logger().info(f"guarding {self.controller_name}: stowed states {list(config['stowed_states'])}, "
                                f"arm state on {self.get_parameter('arm_state_topic').value}, odometry on "
                                f"{self.get_parameter('odom_topic').value}; it stays inactive until nothing blocks")
@@ -136,7 +139,7 @@ class LiftGuard(Node):
 
     # --- the controller manager -----------------------------------------------------------------------------------------------------------
     def poll_controllers(self):
-        if self.list_future is not None or not self.list_client.service_is_ready():
+        if self.exiting or self.list_future is not None or not self.list_client.service_is_ready():
             return
         requested_after, requested_while = self.switches_sent, self.switch_future is not None
         self.list_future = self.list_client.call_async(ListControllers.Request())
@@ -144,6 +147,8 @@ class LiftGuard(Node):
 
     def on_list(self, future, requested_after, requested_while):
         self.list_future = None
+        if self.exiting:
+            return                           # deactivate_for_exit confirms the state itself
         if not lg.list_answer_is_current(requested_after, requested_while, self.switches_sent, self.switch_future is not None):
             return                           # may predate a switch: the next poll asks again
         try:
@@ -194,7 +199,9 @@ class LiftGuard(Node):
 
     def drive(self, codes):
         """Ask for the switch the decision wants (lift_guard.switch_to_request). A request with no answer after switch_timeout_s + 1 s is
-        dropped and counts as failed, so it can be asked again."""
+        dropped and counts as failed, so it can be asked again. Never while exiting."""
+        if self.exiting:
+            return
         if self.switch_future is not None and self.now() - self.switch_future[2] > self.switch_timeout_s + 1.0:
             self.get_logger().error(f"switching {self.controller_name} to {self.switch_future[1]} got no answer")
             self.switch_future = None
@@ -206,22 +213,52 @@ class LiftGuard(Node):
         if target is not None:
             self.switch(target)
 
+    def call_and_wait(self, executor, client, request):
+        future = client.call_async(request)
+        executor.spin_until_future_complete(future, timeout_sec=self.switch_timeout_s + 1.0)
+        return future.result() if future.done() else None
+
     def deactivate_for_exit(self, executor):
-        """Deactivate lift_controller and wait for the answer, before the process exits. Best effort: an already inactive controller is
-        dropped from the request by the controller manager instead of failing it. Returns True when the controller manager answered ok."""
+        """Leave lift_controller inactive before the process exits (accepted on #44; review of #53, P1).
+
+        First the shutdown state: from here on nothing polls, decides or switches (the timer is cancelled and step, drive, poll and on_list
+        return at once), so no callback that runs while this waits can ask for an activation. A switch already sent is no longer tracked and
+        list answers requested before now are dropped. Then, up to EXIT_ATTEMPTS times: ask to deactivate (best effort, so an already
+        inactive controller is not an error), and confirm with list_controllers that lift_controller is not active. An activation sent before
+        the shutdown is answered by the controller manager before this deactivation (same client, in order); if one still shows active, the
+        round repeats. Returns True only when the controller is confirmed not active."""
+        self.exiting = True
+        self.status_timer.cancel()
+        self.switches_sent += 1
+        self.switch_future = None
         if not self.switch_client.wait_for_service(timeout_sec=self.switch_timeout_s):
             print("lift_guard: switch_controller not available at exit; the launch's exit handler deactivates lift_controller",
                   file=sys.stderr, flush=True)
             return False
-        future = self.switch_client.call_async(self.switch_request("inactive", SwitchController.Request.BEST_EFFORT))
-        executor.spin_until_future_complete(future, timeout_sec=self.switch_timeout_s + 1.0)
-        response = future.result() if future.done() else None
-        ok = bool(response is not None and response.ok)
-        print(f"lift_guard: deactivating {self.controller_name} at exit: {'ok' if ok else 'no confirmation'}", file=sys.stderr, flush=True)
-        return ok
+        for attempt in range(1, EXIT_ATTEMPTS + 1):
+            response = self.call_and_wait(executor, self.switch_client,
+                                          self.switch_request("inactive", SwitchController.Request.BEST_EFFORT))
+            if response is None or not response.ok:
+                print(f"lift_guard: exit deactivation, round {attempt}: no ok answer", file=sys.stderr, flush=True)
+                continue
+            listed = self.call_and_wait(executor, self.list_client, ListControllers.Request())
+            if listed is None:
+                print(f"lift_guard: exit deactivation, round {attempt}: list_controllers did not answer", file=sys.stderr, flush=True)
+                continue
+            states = [c.state for c in listed.controller if c.name == self.controller_name]
+            if not states or states[0] != "active":
+                print(f"lift_guard: {self.controller_name} confirmed {states[0] if states else 'absent'} at exit", file=sys.stderr,
+                      flush=True)
+                return True
+            print(f"lift_guard: exit deactivation, round {attempt}: {self.controller_name} still active", file=sys.stderr, flush=True)
+        print(f"lift_guard: {self.controller_name} not confirmed inactive at exit; the launch's exit handler is the fallback",
+              file=sys.stderr, flush=True)
+        return False
 
     # --- the decision and the status ------------------------------------------------------------------------------------------------------
     def step(self, periodic=False):
+        if self.exiting:
+            return
         now = self.now()
         codes = self.logic.evaluate(now)
         self.activating_since, overdue = lg.activation_overdue(codes, self.controller_state, self.activating_since, now,

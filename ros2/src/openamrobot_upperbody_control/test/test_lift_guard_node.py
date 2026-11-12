@@ -203,16 +203,121 @@ def test_an_outside_activation_while_blocked_is_undone_and_the_cause_named(guard
     assert last_status(guard) == (DiagnosticStatus.ERROR, {"lift_controller": "active", "blocking": "BASE_MOVING"})
 
 
+# --- in process: the exit (review of #53, P1: re-activation while waiting for the exit deactivation) ---------------------------------------
+class ScriptedExecutor:
+    """Stands in for the executor while the guard waits at exit. Every wait first runs what can interleave with it: a timer tick that was
+    already due, the answer to any list request still outstanding (reporting `between`), `before` (e.g. answering an activation sent
+    before the exit) and fresh SAFE inputs, so the decision on its own would ask for an activation. Then it completes the awaited future:
+    a switch with `switch_ok`, a list with the next state of `confirm` (the last one repeats)."""
+
+    def __init__(self, node, between="inactive", confirm=("inactive",), switch_ok=True, before=None):
+        self.node, self.between, self.confirm, self.switch_ok, self.before = node, between, list(confirm), switch_ok, before
+
+    def spin_until_future_complete(self, future, timeout_sec=None):
+        node = self.node
+        node.clock["t"] += 0.05
+        node.on_timer()
+        for _, pending in list(node.list_client.calls):
+            if pending is not future and not pending.done():
+                answer_list(pending, self.between)
+        if self.before is not None:
+            self.before()
+        feed(node, node.clock["t"])
+        for _, awaited in node.switch_client.calls:
+            if awaited is future:
+                awaited.set_result(SwitchController.Response(ok=self.switch_ok, message=""))
+                return
+        for _, awaited in node.list_client.calls:
+            if awaited is future:
+                answer_list(awaited, self.confirm.pop(0) if len(self.confirm) > 1 else self.confirm[0])
+                return
+
+
+def switches_since(node, start):
+    return [request for request, _ in node.switch_client.calls[start:]]
+
+
+def test_no_activation_is_asked_once_the_exit_begins(guard):
+    """The reproduction from the review: active, safe inputs, a list answer 'inactive' arriving while the exit waits. Before the fix this
+    asked for an activation and still reported success."""
+    make_active(guard)
+    start = len(guard.switch_client.calls)
+    assert guard.deactivate_for_exit(ScriptedExecutor(guard, between="inactive", confirm=("inactive",))) is True
+    sent = switches_since(guard, start)
+    assert sent and all(not list(r.activate_controllers) for r in sent), [list(r.activate_controllers) for r in sent]
+    assert list(sent[0].deactivate_controllers) == ["lift_controller"]
+    assert sent[0].strictness == SwitchController.Request.BEST_EFFORT
+
+
+def test_an_activation_in_flight_at_exit_cannot_leave_the_controller_active(guard):
+    """An activation sent before the signal, answered while the exit waits: the exit still ends with lift_controller confirmed inactive,
+    and asks for nothing but deactivation."""
+    answer_list(poll(guard), "inactive")
+    feed(guard, 100.0)
+    feed(guard, 101.0)                              # the activation is asked and left unanswered
+    in_flight = guard.switch_client.calls[-1]
+    assert list(in_flight[0].activate_controllers) == ["lift_controller"]
+    start = len(guard.switch_client.calls)
+
+    def manager_answers_the_activation():
+        if not in_flight[1].done():
+            in_flight[1].set_result(SwitchController.Response(ok=True, message=""))
+
+    assert guard.deactivate_for_exit(ScriptedExecutor(guard, before=manager_answers_the_activation, confirm=("inactive",))) is True
+    assert all(not list(r.activate_controllers) for r in switches_since(guard, start))
+
+
+def test_still_active_after_the_exit_deactivation_repeats_it(guard):
+    make_active(guard)
+    start = len(guard.switch_client.calls)
+    assert guard.deactivate_for_exit(ScriptedExecutor(guard, confirm=("active", "inactive"))) is True
+    sent = switches_since(guard, start)
+    assert [list(r.deactivate_controllers) for r in sent] == [["lift_controller"], ["lift_controller"]]
+
+
+def test_never_confirmed_inactive_is_not_a_clean_exit(guard, node_module):
+    make_active(guard)
+    start = len(guard.switch_client.calls)
+    assert guard.deactivate_for_exit(ScriptedExecutor(guard, confirm=("active",))) is False
+    assert len(switches_since(guard, start)) == node_module.EXIT_ATTEMPTS
+
+
+def test_nothing_is_decided_or_published_once_exiting(guard):
+    make_active(guard)
+    guard.deactivate_for_exit(ScriptedExecutor(guard))
+    published, switches = len(guard.status_publisher.msgs), len(guard.switch_client.calls)
+    feed(guard, guard.clock["t"] + 1.0, linear_x=0.5)
+    feed(guard, guard.clock["t"] + 2.0)
+    guard.on_timer()
+    assert (len(guard.status_publisher.msgs), len(guard.switch_client.calls)) == (published, switches)
+
+
 # --- a real process: the exit -----------------------------------------------------------------------------------------------------------
 class FakeControllerManager(Node):
-    """Serves /controller_manager/{switch_controller,list_controllers}: lift_controller starts inactive and follows the switches."""
+    """Serves /controller_manager/{switch_controller,list_controllers}: lift_controller starts inactive and follows the switches. With
+    `safe_inputs` it also publishes, at 20 Hz, both arms in park and still (/joint_states and both controller_state topics) and a stopped
+    base (/odom): everything the guard needs to activate lift_controller, and to try again, if it could, while it exits."""
 
-    def __init__(self):
+    def __init__(self, safe_inputs=False):
         super().__init__("fake_controller_manager")
         self.state = "inactive"
         self.switches = []                          # (request, time answered)
         self.create_service(SwitchController, "/controller_manager/switch_controller", self.on_switch)
         self.create_service(ListControllers, "/controller_manager/list_controllers", self.on_list)
+        if safe_inputs:
+            self.joints = self.create_publisher(JointState, "/joint_states", 10)
+            self.references = {side: self.create_publisher(JointTrajectoryControllerState, f"/{side}_arm_controller/controller_state", 10)
+                               for side in ("left", "right")}
+            self.odom = self.create_publisher(Odometry, "/odom", 10)
+            self.create_timer(0.05, self.publish_safe_inputs)
+
+    def publish_safe_inputs(self):
+        for side, publisher in self.references.items():
+            joints = [f"openarm_{side}_joint{n}" for n in range(1, 8)]
+            self.joints.publish(JointState(name=joints, position=park(side)))
+            publisher.publish(JointTrajectoryControllerState(
+                joint_names=joints, reference=JointTrajectoryPoint(positions=park(side), velocities=[0.0] * 7)))
+        self.odom.publish(Odometry())
 
     def on_switch(self, request, response):
         if "lift_controller" in request.activate_controllers:
@@ -228,10 +333,11 @@ class FakeControllerManager(Node):
         return response
 
 
-@pytest.fixture
-def manager():
+@pytest.fixture(params=[False, True], ids=["blocked", "safe_inputs"])
+def manager(request):
     rclpy.init()
-    node = FakeControllerManager()
+    node = FakeControllerManager(safe_inputs=request.param)
+    node.safe_inputs = request.param
     yield node
     node.destroy_node()
     rclpy.shutdown()
@@ -251,6 +357,9 @@ def test_on_a_signal_the_guard_deactivates_lift_controller_before_it_exits(manag
         spin_for(manager, 30.0, until=lambda: "lift_guard" in manager.get_node_names())
         assert "lift_guard" in manager.get_node_names(), "the guard did not come up"
         spin_for(manager, 1.0)                      # let it poll list_controllers once
+        if manager.safe_inputs:                     # the guard sees safe inputs: it must have switched lift_controller on
+            spin_for(manager, 15.0, until=lambda: manager.state == "active")
+            assert manager.state == "active", "the guard never activated lift_controller with safe inputs"
         before = len(manager.switches)
         child.send_signal(sig)
         spin_for(manager, 15.0, until=lambda: child.poll() is not None)
@@ -262,6 +371,7 @@ def test_on_a_signal_the_guard_deactivates_lift_controller_before_it_exits(manag
             child.wait()
     exit_switches = manager.switches[before:]
     assert exit_switches, "no switch was asked for at exit"
+    assert all(not list(r.activate_controllers) for r, _ in exit_switches), "an activation was asked after the signal"
     request, answered_at = exit_switches[-1]
     assert list(request.deactivate_controllers) == ["lift_controller"] and not list(request.activate_controllers)
     assert request.strictness == SwitchController.Request.BEST_EFFORT
