@@ -38,6 +38,23 @@ on SIGINT/SIGTERM (`ros_exit.py`), as every process of a launch must at teardown
 destroying the DDS participant can deadlock in rmw_fastrtps and the launch then SIGKILLs the process (`ros_exit.py` has the evidence).
 `park_arms.py` counts a park goal that a newer goal replaced as not failed. The real profile has no guard.
 
+### Known limits and open decisions (review on #44)
+
+What the simulated guard implements is not the agreed robot behaviour, and its numbers are not robot limits:
+
+- **Base-stopped thresholds are provisional.** The defaults are 0.01 m/s, 0.01 rad/s, held 0.5 s. The firmware proposal (D14) is
+  0.01 m/s and 0.02 rad/s for 0.5 s. Neither set is authoritative until `openamr-platform-fw#20` decides; then the defaults follow it.
+- **Only `park` counts as stowed**, as a conservative interim choice. The robot rule is stowed or carry, but there is no `carry`
+  group state in the SRDF yet. When it is added, it goes into `stowed_states`. Tests should not assume that only `park` is stowed.
+- **A hung guard is not covered.** If the process is alive but stops evaluating, `lift_controller` stays as it was. The robot stops on
+  a missing heartbeat (D12); the simulation has no heartbeat. The launch's exit handler covers a guard that dies, not one that hangs.
+- **The guard stops the lift only.** It does not stop the base or the arms; on the robot, other arbitration rules cover those.
+- **Motion does not resume by itself.** Deactivating `lift_controller` cancels its active goal (JointTrajectoryController: "Current
+  goal cancelled during deactivate transition"). When the guard activates it again, the controller holds its position, and the lift
+  moves only on a new command.
+- **Stopping times and extra travel measured in simulation are measured values**, not accepted limits (D16) and not evidence of the
+  physical robot's stopping performance.
+
 ## The gripper controller's deprecation warning: do not "fix" it
 
 Every configure of the gripper controllers logs a deprecation warning. It is left in place on purpose.
