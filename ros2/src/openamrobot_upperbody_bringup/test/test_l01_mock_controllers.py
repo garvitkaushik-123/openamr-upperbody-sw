@@ -117,6 +117,12 @@ class TestMockControllers(unittest.TestCase):
 
         self.assertTrue(self._spin_until(lambda: all(j in self.joint_states for j in LEFT + RIGHT),
                                          time.monotonic() + 10.0), "/joint_states never listed all 14 arm joints")
+        # Issue #44: mock.launch.py moves both arms to `park` once at start-up (park_arms.py). Measure "the right arm did not move" only
+        # after that move has ended, or it is that move, not this goal, that the comparison sees.
+        park = _park_pose()
+        self.assertTrue(self._spin_until(lambda: all(abs(self.joint_states[j] - park[j]) <= PARK_SETTLED for j in LEFT + RIGHT),
+                                         time.monotonic() + PARK_WITHIN_S),
+                        f"the arms did not reach park within {PARK_WITHIN_S:.0f} s of the start-up move")
         right_before = {j: self.joint_states[j] for j in RIGHT}
 
         client = ActionClient(self.node, FollowJointTrajectory, "/left_arm_controller/follow_joint_trajectory")
@@ -143,6 +149,19 @@ class TestMockControllers(unittest.TestCase):
         self.assertGreater(abs(self.joint_states["openarm_left_joint1"]), TOLERANCE, "the arm did not move at all")
         for name in RIGHT:
             self.assertAlmostEqual(self.joint_states[name], right_before[name], delta=TOLERANCE, msg=name)
+
+
+PARK_WITHIN_S = 60.0     # the start-up move (park_arms.py) takes 3 s once the arm controllers are active
+PARK_SETTLED = 1e-3      # rad: mock hardware echoes its command, so the arms end exactly on park
+
+
+def _park_pose():
+    """{joint: position} of `park` for both arms, from the SRDF move_group uses (the same source as the start-up move)."""
+    from openamrobot_upperbody_control.lift_guard import stowed_poses_from_srdf
+    from openamrobot_upperbody_moveit.moveit_config import srdf_path
+    with open(srdf_path()) as f:
+        poses = stowed_poses_from_srdf(f.read(), ["park"])
+    return {joint: value for side in poses for joint, value in poses[side][0].items()}
 
 
 from ament_index_python.packages import get_package_prefix as _prefix  # noqa: E402

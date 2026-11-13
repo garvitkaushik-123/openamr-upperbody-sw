@@ -6,12 +6,33 @@
   <maintainer email="info@botshare.ai">OpenAMRobot</maintainer>
   <license>MIT</license>
   <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>ament_cmake_python</buildtool_depend>
   <exec_depend>controller_manager</exec_depend>
   <exec_depend>ros2_controllers</exec_depend>
   <exec_depend>joint_state_broadcaster</exec_depend>
   <exec_depend>joint_trajectory_controller</exec_depend>
   <exec_depend>gripper_controllers</exec_depend>
+  <!-- lift_guard.py (issue #44) -->
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>action_msgs</exec_depend>
+  <exec_depend>builtin_interfaces</exec_depend>
+  <exec_depend>control_msgs</exec_depend>
+  <exec_depend>controller_manager_msgs</exec_depend>
+  <exec_depend>diagnostic_msgs</exec_depend>
+  <exec_depend>nav_msgs</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <!-- lift_guard_odom_stub.py (issue #44, mock only) -->
+  <exec_depend>std_srvs</exec_depend>
+  <!-- park_arms.py (issue #44) -->
+  <exec_depend>trajectory_msgs</exec_depend>
+  <!-- lift_guard_launch.py (issue #44), used by the bringup and gazebo launches -->
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
   <test_depend>ament_cmake_pytest</test_depend>
+  <test_depend>python3-pytest</test_depend>
+  <!-- test_lift_guard_node.py (issue #44) -->
+  <test_depend>ament_cmake_ros</test_depend>
+  <test_depend>rclpy</test_depend>
   <test_depend>openamrobot_upperbody_description</test_depend>
   <test_depend>python3-yaml</test_depend>
   <export><build_type>ament_cmake</build_type></export>

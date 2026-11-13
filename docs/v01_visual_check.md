@@ -46,7 +46,8 @@ this run to itself.
 
 That opens the Gazebo window and RViz beside it (fixed frame `odom`, RobotModel and TF displays). The first start takes about a
 minute; wait until `ros2 control list_controllers` in another terminal shows six controllers `active` (the five arm and gripper ones and
-`lift_controller`, issue #17).
+`lift_controller`, issue #17). Since issue #44 `lift_controller` starts inactive and the lift guard activates it once the start-up move
+has put both arms in `park`; `/lift_guard/status` says why while it is not.
 
 For items 1 to 4 the lift has to be moved. In the simulator `lift_controller` moves it (plan group `lift` to `L1175` or `L1350` in RViz's
 MotionPlanning panel with both arms in `park`, item 8's setup), or use the model viewer, whose `joint_state_publisher_gui` has a slider for
