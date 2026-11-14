@@ -14,6 +14,8 @@ if(BUILD_TESTING)
   find_package(ament_cmake_pytest REQUIRED)
   # H01: every test file is registered, and every launch test checks that its processes started and exited cleanly (static, over all five packages).
   ament_add_pytest_test(h01_harness_guards test/test_h01_harness_guards.py TIMEOUT 120)
+  # Issue #63: the base stub exits 0 on SIGINT and SIGTERM (it exited 1 on SIGTERM and could hang in Fast DDS at teardown)
+  ament_add_pytest_test(base_joint_states_stub_exit test/test_base_joint_states_stub_exit.py TIMEOUT 120)
   # the two numbers M02 gates the clamp on, and that counts gate nothing (P17); no ROS graph
   ament_add_pytest_test(a7_clamp_gate test/test_a7_clamp_gate.py TIMEOUT 120)
   # W04 (a force-stopped gz server is a WARN) from the launch tests' sidecars (P18)

@@ -10,6 +10,7 @@ out is published unchanged and logged as an error (not float noise: not this nod
 and the magnitude; every activation is counted. `~/get_stats` (std_srvs/Trigger) returns the counters as JSON in `message`, which is where the
 A7 evidence reads them. Why this exists and what it is not: openamrobot_upperbody_moveit/joint_state_clamp.py.
 """
+import os
 import sys
 import xml.etree.ElementTree as ET
 
@@ -98,9 +99,21 @@ def main(argv=None):
         return run(node)
     finally:
         print("joint_state_clamp: final counters: " + node.clamp.summary_json(), flush=True)      # not the logger: its context is gone by now
-        node.destroy_node()          # before the shutdown, always
-        rclpy.try_shutdown()         # a no-op when the signal's handler already did it
+        # no destroy_node() or try_shutdown(): see exit_process (#63)
+
+
+def exit_process(code):
+    """End the process with `code` now, without destroying the node (issue #63). With rmw_fastrtps, destroying the last node destroys the DDS
+    participant, and at a launch teardown that can deadlock: the main thread waits in DomainParticipant::set_listener for a listener
+    callback that a discovery thread runs and that waits on a lock the main thread holds, with the GIL held, so SIGTERM cannot end it and
+    launch SIGKILLs the process (exit -9). The process is ending: os._exit leaves the participant to the kernel, peers drop it at its lease."""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.flush()
+        except (OSError, ValueError):
+            pass
+    os._exit(code)
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    exit_process(main())

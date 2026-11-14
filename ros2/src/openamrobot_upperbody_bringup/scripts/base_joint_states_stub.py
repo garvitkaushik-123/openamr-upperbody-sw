@@ -10,8 +10,15 @@ joint_state_broadcaster reports it (its starting position is mock.launch.py's `l
 simulator and this node is not started.
 
     ros2 run openamrobot_upperbody_bringup base_joint_states_stub.py [--ros-args -p rate:=10.0]
+
+Exit (issue #63): 0 on SIGINT and SIGTERM, as every process of a launch must at teardown (P24). It used to exit 1 on every SIGTERM
+(ExternalShutdownException was not caught), and it could hang in Fast DDS while destroying its node and be SIGKILLed (M01, exit -9).
 """
+import os
+import sys
+
 import rclpy
+from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from sensor_msgs.msg import JointState
 
@@ -32,17 +39,33 @@ class BaseJointStatesStub(Node):
         self.pub.publish(msg)
 
 
-def main():
-    rclpy.init()
+def main(argv=None):
+    """0 when a shutdown (SIGINT or SIGTERM) ends the spin; anything else raises. The RuntimeError is the executor's take racing the signal,
+    a shutdown only when the context is closed (the same rule as joint_state_clamp.run)."""
+    rclpy.init(args=argv)
     node = BaseJointStatesStub()
     try:
         rclpy.spin(node)
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, ExternalShutdownException):
         pass
-    finally:
-        node.destroy_node()
-        rclpy.try_shutdown()
+    except RuntimeError:
+        if rclpy.ok():
+            raise
+    return 0                                      # no destroy_node(): see exit_process
+
+
+def exit_process(code):
+    """End the process with `code` now, without destroying the node (issue #63). With rmw_fastrtps, destroying the last node destroys the DDS
+    participant, and at a launch teardown that can deadlock: the main thread waits in DomainParticipant::set_listener for a listener
+    callback that a discovery thread runs and that waits on a lock the main thread holds, with the GIL held, so SIGTERM cannot end it and
+    launch SIGKILLs the process (exit -9). The process is ending: os._exit leaves the participant to the kernel, peers drop it at its lease."""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.flush()
+        except (OSError, ValueError):
+            pass
+    os._exit(code)
 
 
 if __name__ == "__main__":
-    main()
+    exit_process(main())
