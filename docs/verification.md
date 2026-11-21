@@ -229,6 +229,24 @@ They are never left in a tree: a tree with canaries is dirty and a report is not
 
 Current result (A6, `evidence/20261007T164436Z_dev.json`): 22 `PASS`, 6 `WARN`, 0 `SKIP`, 0 `FAIL`, 0 `NOT_RUN` with the upstream checkout present.
 
+## Skips: why each one exists, and why none is a pass
+
+Every `skip`, `xfail` and `importorskip` in `ros2/` and `tools/` names `openAMRobot/openamr-upperbody-sw#16` on the same statement, and
+`tools/check_skip_tracking.py` fails the Model tests workflow (A6 and A7) for one that does not. A skipped case is never counted as passed:
+`tools/count_ci_tests.py` counts it apart and fails the job if nothing executed, and an evidence check whose tests all skipped reports `SKIP`
+or `NOT_RUN`, never `PASS`. All skips are conditional on the environment; none marks a broken test.
+
+| Skip | Condition | Where its result is reported |
+|---|---|---|
+| M01, M02, M07 (`openamrobot_upperbody_bringup`) | `OPENAMR_A7` unset (A6 does not start Gazebo or MoveIt) | A7, `run_a7_regression.sh` |
+| clamp-in-the-loop, three cases (`openamrobot_upperbody_moveit`) | the case belongs to the other of two registrations (`CLAMP=true` or `false`) | the other registration |
+| C01, C02, datums revision, SRDF import, merge markers, W02 | an input is absent: a checkout, a pinned upstream, `robot_state_publisher`, a git checkout | A6, counted as skipped by `count_ci_tests.py`. C02 with no `src/upstream/` is the one accepted `SKIP` of an evidence check |
+| actuator ledger comparison (`test_sim_dynamics_profile`) | `config/actuator_ledger.yaml` is not in the tree | A6 |
+| `test_p25_placeholder_material`, `test_sim_spawn_height` | `gz` or the description package is not installed | A6, A7 |
+| `openamrobot_openarm_emulator` static and SIL tests | the description package, workflow directory, `xacro` or `numpy` is not beside the package; a SIL launch test reports `BLOCKED` | a full workspace; `BLOCKED` is not `PASS` |
+
+To see what was skipped on a run, read the counts that `count_ci_tests.py` writes to the job summary.
+
 ## The six WARNs
 
 *19 Oct (P22): this table is the 7 Oct state. On the current pin (platform-sw `dfd44a5`) A6 has three WARNs, E01, W02 and V01 (`evidence/reports/README.md`, P20 and P21): W01 was resolved by the root change (P15); T04 passes **by deletion**, because the near-field frames are consumed from platform-sw and no longer declared here (VERIFICATION.md, T04); T08 cleared because platform-sw #70 replaced the six STL collision meshes with boxes and cylinders, not because of any change here.*

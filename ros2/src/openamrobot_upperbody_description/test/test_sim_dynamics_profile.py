@@ -171,7 +171,7 @@ def test_sim_dynamics_agrees_with_the_actuator_ledger_once_it_is_on_main(profile
     """The motor data lives in the actuator ledger (pull request 65). When that file is present: every controlled joint has a
     ledger entry, the grip limit is the ledger's rated torque and current, and each implied rotor inertia is armature / ratio^2."""
     if not os.path.isfile(LEDGER_FILE):
-        pytest.skip("config/actuator_ledger.yaml is not in this tree (upperbody-sw pull request 65 is not merged): nothing to compare")
+        pytest.skip("config/actuator_ledger.yaml is not in this tree (upperbody-sw pull request 65 is not merged): nothing to compare")  # tracking: openAMRobot/openamr-upperbody-sw#16
     ledger = {entry["id"]: entry for entry in load(LEDGER_FILE)["actuators"]}
     controlled = [name for name, joint in profile["joints"].items() if joint["controlled"]]
     assert set(controlled) <= set(ledger), sorted(set(controlled) - set(ledger))

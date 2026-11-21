@@ -69,7 +69,7 @@ def test_w02_kdl_converts_the_planar_joint_to_fixed(tmp_path):
     if _executable() is None:
         write_sidecar("W02", "planar_kdl", "KDL converts base_planar_joint to a fixed joint", "WARN",
                       {**details, "observed": False, "not_observed_because": "robot_state_publisher is not installed"})
-        pytest.skip("robot_state_publisher is not installed: W02 recorded without an observation")
+        pytest.skip("robot_state_publisher is not installed: W02 recorded without an observation")  # tracking: openAMRobot/openamr-upperbody-sw#16
 
     on = run_robot_state_publisher(planar, tmp_path)
     off = run_robot_state_publisher(expand_xml(), tmp_path)

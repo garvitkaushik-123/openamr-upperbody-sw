@@ -101,7 +101,7 @@ def _c9_hash_definitions():
 
 
 needs_c9 = pytest.mark.skipif(not os.path.isfile(C9_SCHEMA),
-                              reason=f"openamrobot-interfaces is not in the workspace ({C9_SCHEMA} missing)")
+                              reason=f"openamrobot-interfaces is not in the workspace ({C9_SCHEMA} missing)")  # tracking: openAMRobot/openamr-upperbody-sw#16
 
 
 @needs_c9
@@ -280,7 +280,7 @@ def test_c01_the_pinned_upstream_commit_is_a_full_hash_and_matches_the_baseline_
     assert re.fullmatch(r"[0-9a-f]{40}", commit)
     pinned = ev.pinned_commit_in_baseline(WORKSPACE)
     if pinned is None:
-        pytest.skip("openamrobot-manipulation's baseline .repos is not in the workspace")
+        pytest.skip("openamrobot-manipulation's baseline .repos is not in the workspace")  # tracking: openAMRobot/openamr-upperbody-sw#16
     assert commit == pinned, f"checkout is at {commit}, openarm_v2.dev.repos pins {pinned}"
 
 

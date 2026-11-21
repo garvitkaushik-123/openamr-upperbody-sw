@@ -26,7 +26,7 @@ def upstream_srdf():
     path = os.path.join(checkout, UPSTREAM_SRDF)
     if not os.path.isfile(path):
         pytest.skip(f"no checkout of openarm_ros2 at {checkout}: the imported SRDF elements cannot be compared with upstream's "
-                    f"(config/upstream_pins.yaml pins the commit; C02 compares it with the checkout when there is one)")
+                    f"(config/upstream_pins.yaml pins the commit; C02 compares it with the checkout when there is one)")  # tracking: openAMRobot/openamr-upperbody-sw#16
     pinned = ev.all_pins().get("openarm_ros2")
     head = ev.git_head(checkout)
     assert head == pinned, f"the checkout is at {head}, the pin is {pinned}: this comparison would not be against the pinned commit"
