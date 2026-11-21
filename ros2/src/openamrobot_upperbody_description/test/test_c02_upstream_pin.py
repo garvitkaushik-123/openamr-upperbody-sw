@@ -60,7 +60,7 @@ def test_c02_the_real_pin_file_agrees_with_every_real_checkout_or_says_why_it_sk
     result, details = ev.pins_vs_checkouts(WORKSPACE)
     write_sidecar("C02", "upstream_pin", CHECK_NAME, result, details)
     if result == "SKIP":
-        pytest.skip(details["reason"])
+        pytest.skip(details["reason"])  # tracking: openAMRobot/openamr-upperbody-sw#16
     assert result == "PASS", details["reason"]
     for name in details["compared"]:
         assert details["pins"][name]["pin"] == details["pins"][name]["checkout_head"]
@@ -108,7 +108,7 @@ def test_c02_an_unquoted_all_digit_pin_is_not_silently_compared_as_a_number(tmp_
 def test_c02_a_wrong_pin_fails_against_the_real_checkout_too(tmp_path):
     real = ev.upstream_checkout(WORKSPACE, "openarm_description")
     if ev.git_head(real) is None:
-        pytest.skip(f"no real checkout at {real}; the synthetic test above covers the same path")
+        pytest.skip(f"no real checkout at {real}; the synthetic test above covers the same path")  # tracking: openAMRobot/openamr-upperbody-sw#16
     wrong = "f" * 40
     result, details = ev.pin_vs_checkout(WORKSPACE, pins_file=_pins(tmp_path, wrong))
     assert result == "FAIL" and wrong in details["reason"] and ev.git_head(real) in details["reason"]

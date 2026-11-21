@@ -63,8 +63,8 @@ def lowest_collision_z(urdf_xml):
 
 @pytest.fixture(scope="module")
 def urdf():
-    xacro = pytest.importorskip("xacro")
-    share = pytest.importorskip("ament_index_python.packages").get_package_share_directory("openamrobot_upperbody_description")
+    xacro = pytest.importorskip("xacro")  # tracking: openAMRobot/openamr-upperbody-sw#16
+    share = pytest.importorskip("ament_index_python.packages").get_package_share_directory("openamrobot_upperbody_description")  # tracking: openAMRobot/openamr-upperbody-sw#16
     return xacro.process_file(os.path.join(share, "urdf", "combined_robot.xacro"), mappings={"hardware_profile": "gazebo"}).toxml()
 
 

@@ -39,7 +39,7 @@ def toplevel():
 def test_no_tracked_file_trips_the_organisations_merge_marker_scan():
     repo = toplevel()
     if repo is None:
-        pytest.skip("not a git checkout: the organisation's scan runs over a checkout")
+        pytest.skip("not a git checkout: the organisation's scan runs over a checkout")  # tracking: openAMRobot/openamr-upperbody-sw#16
     status, output = git_grep(repo, ORG_PATTERN)
     assert status == 1, "the organisation's `Reject unresolved merge markers` step would fail on:\n" + output
 

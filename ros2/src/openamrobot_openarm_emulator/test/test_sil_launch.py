@@ -124,7 +124,7 @@ class TestSilLaunch(unittest.TestCase):
 
     def setUp(self):
         if BLOCKED:
-            self.skipTest(f"BLOCKED: {BLOCKED}")
+            self.skipTest(f"BLOCKED: {BLOCKED}")  # tracking: openAMRobot/openamr-upperbody-sw#16
 
     def spin(self, seconds):
         end = time.monotonic() + seconds

@@ -42,7 +42,7 @@ def test_every_pin_is_a_quoted_full_hash():
 def test_the_driver_pin_is_the_models_pin():
     model = os.path.join(PACKAGE, "..", "openamrobot_upperbody_description", "config", "upstream_pins.yaml")
     if not os.path.exists(model):
-        pytest.skip("openamrobot_upperbody_description is not beside this package")
+        pytest.skip("openamrobot_upperbody_description is not beside this package")  # tracking: openAMRobot/openamr-upperbody-sw#16
     ours, theirs = load(os.path.join(PACKAGE, "config", "sil_pins.yaml"))["pins"], load(model)["pins"]
     assert ours["openarm_ros2"] == theirs["openarm_ros2"]
     assert ours["openarm_description"] == theirs["openarm_description"]
@@ -51,7 +51,7 @@ def test_the_driver_pin_is_the_models_pin():
 def test_the_ci_workflow_checks_out_the_pins_file_commits():
     workflow = os.path.join(PACKAGE, "..", "..", "..", ".github", "workflows", "openarm-emulator-tests.yml")
     if not os.path.exists(workflow):
-        pytest.skip("the repository's workflow directory is not beside this package")
+        pytest.skip("the repository's workflow directory is not beside this package")  # tracking: openAMRobot/openamr-upperbody-sw#16
     text = open(workflow).read()
     assert "config/sil_pins.yaml" in text                    # the commits are read from the file, not copied
     assert not HEX40.search(re.sub(r"uses: \S+@[0-9a-f]{40}", "", text)), "a commit hash is written into the workflow"
@@ -128,7 +128,7 @@ def test_the_launch_expands_the_simulated_model_without_the_simulator_dynamics_p
         get_package_share_directory("openarm_description")
         get_package_share_directory("openamrobot_description")
     except Exception as error:      # noqa: BLE001
-        pytest.skip(f"description packages are not installed: {error}")
+        pytest.skip(f"description packages are not installed: {error}")  # tracking: openAMRobot/openamr-upperbody-sw#16
     combined = os.path.join(description, "urdf", "combined_robot.xacro")
     off = xacro.process_file(combined, mappings={"hardware_profile": "gazebo", "sim_dynamics": "off"}).documentElement
     on = xacro.process_file(combined, mappings={"hardware_profile": "gazebo"}).documentElement
@@ -169,14 +169,14 @@ def test_setup_vcan_script_reports_blocked_or_creates(tmp_path):
 def test_the_real_profile_wrapper_changes_only_the_can_parameters():
     """urdf/openarm_sil_real.urdf.xacro against combined_robot.xacro at hardware_profile:=real: the same document apart
     from the two interface names and can_fd. Needs the description packages (skipped without them)."""
-    xacro = pytest.importorskip("xacro")
+    xacro = pytest.importorskip("xacro")  # tracking: openAMRobot/openamr-upperbody-sw#16
     try:
         from ament_index_python.packages import get_package_share_directory
         description = get_package_share_directory("openamrobot_upperbody_description")
         get_package_share_directory("openarm_description")
         get_package_share_directory("openamrobot_description")
     except Exception as error:      # noqa: BLE001
-        pytest.skip(f"description packages are not installed: {error}")
+        pytest.skip(f"description packages are not installed: {error}")  # tracking: openAMRobot/openamr-upperbody-sw#16
 
     def body(path, **mappings):
         document = xacro.process_file(path, mappings={"hardware_profile": "real", **mappings})
@@ -199,15 +199,15 @@ def test_the_real_profile_wrapper_changes_only_the_can_parameters():
 def test_damping_inertia_defaults_are_the_models_link_inertias():
     """The emulator's damping_inertia (the numerical damping treatment, README) is each joint's child link, with what is
     fixed to it, about the joint axis. Recomputed here from the expanded combined model, for both arms."""
-    np = pytest.importorskip("numpy")
-    xacro = pytest.importorskip("xacro")
+    np = pytest.importorskip("numpy")  # tracking: openAMRobot/openamr-upperbody-sw#16
+    xacro = pytest.importorskip("xacro")  # tracking: openAMRobot/openamr-upperbody-sw#16
     try:
         from ament_index_python.packages import get_package_share_directory
         description = get_package_share_directory("openamrobot_upperbody_description")
         get_package_share_directory("openarm_description")
         get_package_share_directory("openamrobot_description")
     except Exception as error:      # noqa: BLE001
-        pytest.skip(f"description packages are not installed: {error}")
+        pytest.skip(f"description packages are not installed: {error}")  # tracking: openAMRobot/openamr-upperbody-sw#16
     root = xacro.process_file(os.path.join(description, "urdf", "combined_robot.xacro"),
                               mappings={"hardware_profile": "gazebo"}).documentElement
 

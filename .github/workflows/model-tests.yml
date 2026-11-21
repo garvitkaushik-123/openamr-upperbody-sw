@@ -108,7 +108,13 @@ jobs:
       - name: Self-test of the test counter
         env:
           PYTHONDONTWRITEBYTECODE: "1"
-        run: python3 -m pytest -q -p no:cacheprovider ws/src/openamr-upperbody-sw/tools/tests/test_count_ci_tests.py
+        run: python3 -m pytest -q -p no:cacheprovider ws/src/openamr-upperbody-sw/tools/tests/test_count_ci_tests.py ws/src/openamr-upperbody-sw/tools/tests/test_check_skip_tracking.py
+
+      # Every skip, xfail and importorskip names a tracking issue (shared rule, Tests; issue #16). A skip is not a pass.
+      - name: Every skip names a tracking issue
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python3 ws/src/openamr-upperbody-sw/tools/check_skip_tracking.py
 
       - name: ROS, MoveIt and Gazebo package versions
         run: |
@@ -241,7 +247,13 @@ jobs:
       - name: Self-test of the test counter
         env:
           PYTHONDONTWRITEBYTECODE: "1"
-        run: python3 -m pytest -q -p no:cacheprovider ws/src/openamr-upperbody-sw/tools/tests/test_count_ci_tests.py
+        run: python3 -m pytest -q -p no:cacheprovider ws/src/openamr-upperbody-sw/tools/tests/test_count_ci_tests.py ws/src/openamr-upperbody-sw/tools/tests/test_check_skip_tracking.py
+
+      # Every skip, xfail and importorskip names a tracking issue (shared rule, Tests; issue #16). A skip is not a pass.
+      - name: Every skip names a tracking issue
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python3 ws/src/openamr-upperbody-sw/tools/check_skip_tracking.py
 
       - name: ROS, MoveIt and Gazebo package versions
         run: |

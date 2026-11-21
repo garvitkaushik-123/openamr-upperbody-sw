@@ -73,7 +73,7 @@ def test_colour_is_not_used_by_any_other_visual():
     assert users == sorted(LINKS), users
 
 
-@pytest.mark.skipif(shutil.which("gz") is None, reason="gz is not on the PATH")
+@pytest.mark.skipif(shutil.which("gz") is None, reason="gz is not on the PATH")  # tracking: openAMRobot/openamr-upperbody-sw#16
 @pytest.mark.parametrize("base_plate", ["bp000", "bp050"])
 def test_sdf_carries_the_same_colour(base_plate):
     text = expand_xml(base_plate=base_plate)

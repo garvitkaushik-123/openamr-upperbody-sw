@@ -52,7 +52,7 @@ def check_against_parent(datums_path):
 def test_revision_guard_against_head_parent():
     status, message = check_against_parent(DATUMS_FILE)
     if status == "skip":
-        pytest.skip(message)
+        pytest.skip(message)  # tracking: openAMRobot/openamr-upperbody-sw#16
     assert status == "ok", message
 
 
