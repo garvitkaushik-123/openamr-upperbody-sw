@@ -5,6 +5,7 @@ find_package(ament_cmake REQUIRED)
 install(DIRECTORY launch config DESTINATION share/openamrobot_upperbody_bringup)
 install(PROGRAMS
   scripts/base_joint_states_stub.py
+  scripts/a7_lift_settle_probe.py
   scripts/build_a7_evidence.py
   scripts/run_a7_regression.sh
   DESTINATION lib/${PROJECT_NAME})
@@ -16,6 +17,7 @@ if(BUILD_TESTING)
   ament_add_pytest_test(h01_harness_guards test/test_h01_harness_guards.py TIMEOUT 120)
   # the two numbers M02 gates the clamp on, and that counts gate nothing (P17); no ROS graph
   ament_add_pytest_test(a7_clamp_gate test/test_a7_clamp_gate.py TIMEOUT 120)
+  ament_add_pytest_test(a7_lift_settle_probe test/test_a7_lift_settle_probe.py TIMEOUT 60)
   # W04 (a force-stopped gz server is a WARN) from the launch tests' sidecars (P18)
   ament_add_pytest_test(a7_w04 test/test_a7_w04.py TIMEOUT 120)
   ament_add_pytest_test(a7_process_exits test/test_a7_process_exits.py TIMEOUT 120)

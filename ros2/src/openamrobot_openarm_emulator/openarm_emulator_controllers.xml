@@ -1,0 +1,7 @@
+<library path="openarm_emulator_controller">
+  <class name="openamrobot_openarm_emulator/OpenArmCanEmulator"
+         type="openamrobot_openarm_emulator::OpenArmCanEmulator"
+         base_class_type="controller_interface::ControllerInterface">
+    <description>Emulated OpenArm 2.0 motors of one arm on a SocketCAN interface. Reads joint position and velocity, commands joint effort. Simulation only.</description>
+  </class>
+</library>

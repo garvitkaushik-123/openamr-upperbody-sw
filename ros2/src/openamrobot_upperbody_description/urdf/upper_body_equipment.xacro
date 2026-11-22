@@ -1,7 +1,8 @@
 <?xml version="1.0"?>
 <!-- SPDX-License-Identifier: MIT -->
 <!--
-  P-03 item 24 upper-body equipment (P-03 rev20.1 item 25 D8; P-03 rev20.2 item 26 for the tablet mount): placeholder
+  P-03 item 24 upper-body equipment (P-03 rev20.1 item 25 D8; P-03 rev20.4 item 28 for the tablet, the second E-stop and the lift
+  stop sensors, owner decisions of 8 Nov 2026): placeholder
   geometry at the positions the documentation model draws (openamrobot-docs docs/assets/roadmap/model/model.js, blocks
   CHEST-JSON and LIFT-JSON, chestItems() and liftSensors()), so the robot description and the docs model are the same robot.
   Placeholders until work package M-09.
@@ -14,16 +15,17 @@
   (joint origins, inertia tensors) are computed here and stored nowhere.
 
     Moving (below lift_joint):
-      arm_profile_link  -> getac_tablet_link       Getac ZX80, landscape, screen forward, rear face on the profile front face
+      arm_profile_link  -> getac_tablet_link       Getac ZX80, portrait (fixed mount), screen forward, rear face on the profile front face
                         -> head_light_link         Falcon FLDL-i150x15-W, top edge head_light_gap_below_tablet below the tablet
       head_camera_link (option B's frame)          Stereolabs ZED Mini body box, pitched with the frame
       head_camera_mount_link -> head_camera_bracket_link   placeholder for the OpenArm-supplied mount, profile top to lens line
-      adapter_plate_link -> lift_flag_rod_link     MISUMI 20 x 20 rod hanging from the plate underside (frame at its top end)
-                            -> lift_flag_link      SS400 flag, lift_flag_gap from the sensor faces
+      adapter_plate_link -> second_estop_link      on the plate top behind the arm post, on the column axis, button up
+                                                   (x = button axis, up), in its housing envelope
+                         -> lift_flag_rod_link     MISUMI 20 x 20 rod hanging from the plate's rear extension (frame at its top end)
+                            -> lift_flag_link      SS400 flag, lift_flag_gap from the sensor faces (along y)
     Static (children of lift_column_base_link):
-      second_estop_link                            on the static profile rear face, facing rearward (x = button axis, outward)
-      lift_stop_sensor_{l1000,l1175,l1350}_link    SICK IME12 on the left face, frame at the sensing face centre, body along +x,
-                                                   with its SICK BEF-WN-M12 bracket envelope
+      lift_stop_sensor_{l1000,l1175,l1350}_link    SICK IME12 behind the rear face, frame at the sensing face centre, axis along y,
+                                                   body along -y, senses along +y, with its SICK BEF-WN-M12 bracket envelope
 
   Called from openamrobot_upperbody.xacro (its `datums` parameter). Frame entries: config/frame_contract.yaml.
 -->
@@ -61,6 +63,8 @@
     <xacro:property name="cam" lazy_eval="false" value="${datums['datums']['head_camera_size']['value']}"/>
     <xacro:property name="cam_x" lazy_eval="false" value="${datums['datums']['head_camera_body_x_from_lens_line']['value']}"/>
     <xacro:property name="cam_m" lazy_eval="false" value="${datums['datums']['head_camera_mass']['value']}"/>
+    <xacro:if value="${'head_camera_link' in roadmap_links}"><xacro:openamr_roadmap_inertial link="head_camera_link"/></xacro:if>
+    <xacro:unless value="${'head_camera_link' in roadmap_links}">
     <inertial>
       <origin xyz="${cam_x} 0 0" rpy="0 0 0"/>
       <mass value="${cam_m}"/>
@@ -68,6 +72,7 @@
                iyy="${cam_m * (cam[0] * cam[0] + cam[2] * cam[2]) / 12}" iyz="0"
                izz="${cam_m * (cam[0] * cam[0] + cam[1] * cam[1]) / 12}"/>
     </inertial>
+    </xacro:unless>
     <xacro:openamrobot_equipment_box name="placeholder_head_camera_body" size="${cam}" xyz="${[cam_x, 0, 0]}"/>
   </xacro:macro>
 
@@ -77,6 +82,8 @@
     <xacro:property name="plate_t" lazy_eval="false" value="${geo['adapter_plate_thickness']}"/>
     <xacro:property name="section" lazy_eval="false" value="${eq['lift_column_section']['value']}"/>
     <xacro:property name="plate_section" lazy_eval="false" value="${eq['adapter_plate_section']['value']}"/>
+    <xacro:property name="plate_centre_x" lazy_eval="false"
+                    value="${-section[0] / 2 - eq['adapter_plate_rear_extension']['value'] + plate_section[0] / 2}"/>
 
     <!-- ===== Chest: the Getac tablet and the head light on the arm-profile front face (moving) ===== -->
     <xacro:property name="x_front" lazy_eval="false" value="${eq['chest_equipment_x_from_profile_front_face']['value']}"/>
@@ -88,7 +95,8 @@
                     value="${tablet_z - tablet[2] / 2 - eq['head_light_gap_below_tablet']['value'] - light[2] / 2}"/>
 
     <link name="getac_tablet_link">
-      <xacro:openamrobot_equipment_box_inertial mass="${eq['getac_tablet_mass']['value']}" size="${tablet}"/>
+      <xacro:if value="${'getac_tablet_link' in roadmap_links}"><xacro:openamr_roadmap_inertial link="getac_tablet_link"/></xacro:if>
+      <xacro:unless value="${'getac_tablet_link' in roadmap_links}"><xacro:openamrobot_equipment_box_inertial mass="${eq['getac_tablet_mass']['value']}" size="${tablet}"/></xacro:unless>
       <xacro:openamrobot_equipment_box name="placeholder_getac_tablet" size="${tablet}" xyz="${[0, 0, 0]}"/>
     </link>
     <xacro:openamrobot_placeholder_gazebo_material link="getac_tablet_link"/>
@@ -99,7 +107,8 @@
     </joint>
 
     <link name="head_light_link">
-      <xacro:openamrobot_equipment_box_inertial mass="${eq['head_light_mass']['value']}" size="${light}"/>
+      <xacro:if value="${'head_light_link' in roadmap_links}"><xacro:openamr_roadmap_inertial link="head_light_link"/></xacro:if>
+      <xacro:unless value="${'head_light_link' in roadmap_links}"><xacro:openamrobot_equipment_box_inertial mass="${eq['head_light_mass']['value']}" size="${light}"/></xacro:unless>
       <xacro:openamrobot_equipment_box name="placeholder_head_light" size="${light}" xyz="${[0, 0, 0]}"/>
     </link>
     <xacro:openamrobot_placeholder_gazebo_material link="head_light_link"/>
@@ -109,57 +118,65 @@
       <origin xyz="${profile['size_x'] / 2 + x_front + light[0] / 2} 0 ${light_z - profile_centre_z}" rpy="0 0 0"/>
     </joint>
 
-    <!-- ===== Second E-stop envelope on the static profile rear face (static), facing rearward ===== -->
-    <xacro:property name="panel_behind" lazy_eval="false" value="${eq['second_estop_panel_behind_profile']['value']}"/>
+    <!-- ===== Second E-stop on the adapter plate top (moving), button up (P-03 rev20.4 item 28) =====
+         The frame is on the button axis at the panel face: x up along the axis (pitch -pi/2), y lateral, z rearward (the plate's -x). The contact block stands on the plate top inside the housing envelope; all of it moves with the lift. -->
+    <xacro:property name="panel_above" lazy_eval="false" value="${eq['second_estop_panel_above_plate']['value']}"/>
     <xacro:property name="es_block" lazy_eval="false" value="${eq['second_estop_contact_block_size']['value']}"/>
     <xacro:property name="es_collar" lazy_eval="false" value="${eq['second_estop_collar_size']['value']}"/>
     <xacro:property name="es_head" lazy_eval="false" value="${eq['second_estop_head_size']['value']}"/>
+    <xacro:property name="es_housing" lazy_eval="false" value="${eq['second_estop_housing_size']['value']}"/>
     <link name="second_estop_link">
+      <xacro:openamrobot_equipment_box name="placeholder_second_estop_housing" size="${es_housing}"
+                                       xyz="${[-panel_above + es_housing[0] / 2, 0, 0]}"/>
       <xacro:openamrobot_equipment_box name="placeholder_second_estop_contact_block" size="${es_block}"
-                                       xyz="${[-panel_behind + es_block[0] / 2, 0, 0]}"/>
+                                       xyz="${[-panel_above + es_block[0] / 2, 0, 0]}"/>
       <xacro:openamrobot_equipment_box name="placeholder_second_estop_collar" size="${es_collar}"
-                                       xyz="${[-panel_behind + es_block[0] + es_collar[0] / 2, 0, 0]}"/>
+                                       xyz="${[-panel_above + es_block[0] + es_collar[0] / 2, 0, 0]}"/>
       <xacro:openamrobot_equipment_box name="placeholder_second_estop_head" size="${es_head}"
-                                       xyz="${[-panel_behind + es_block[0] + es_collar[0] + es_head[0] / 2, 0, 0]}"/>
+                                       xyz="${[-panel_above + es_block[0] + es_collar[0] + es_head[0] / 2, 0, 0]}"/>
     </link>
     <xacro:openamrobot_placeholder_gazebo_material link="second_estop_link"/>
     <joint name="second_estop_joint" type="fixed">
-      <parent link="lift_column_base_link"/>
+      <parent link="adapter_plate_link"/>
       <child link="second_estop_link"/>
-      <origin xyz="${-section[0] / 2 - panel_behind} 0 ${col['retracted_length'] - eq['lift_static_profile_top_below_column_top']['value'] - eq['second_estop_below_profile_top']['value']}"
-              rpy="0 0 ${pi}"/>
+      <!-- adapter_plate_link is at the plate's centre (plate_t / 2 below its top face); the button axis is the column axis -->
+      <origin xyz="${-plate_centre_x} 0 ${plate_t / 2 + panel_above}" rpy="0 ${-pi / 2} 0"/>
     </joint>
 
-    <!-- ===== Lift-stop sensors and brackets on the static profile left face (static) ===== -->
+    <!-- ===== Lift-stop sensors and brackets behind the static profile rear face (static), P-03 rev20.4 item 28 =====
+         Sensor axis along y, lift_stop_sensor_axis_behind_rear_face behind the rear face, centred in y; the frame is at the sensing face
+         centre (y = sensor length / 2), the body runs along -y and the sensor senses along +y. The bracket: one leg flat on the rear face
+         (y 0 to -leg), the other leg across the sensor (x from the rear face back, y -t to 0), the sensor passing through it. -->
     <xacro:property name="s_len" lazy_eval="false" value="${eq['lift_stop_sensor_length']['value']}"/>
-    <xacro:property name="s_axis_off" lazy_eval="false" value="${eq['lift_stop_sensor_axis_from_face']['value']}"/>
+    <xacro:property name="s_d" lazy_eval="false" value="${eq['lift_stop_sensor_diameter']['value']}"/>
+    <xacro:property name="s_back" lazy_eval="false" value="${eq['lift_stop_sensor_axis_behind_rear_face']['value']}"/>
     <xacro:property name="b_leg" lazy_eval="false" value="${eq['lift_sensor_bracket_leg']['value']}"/>
     <xacro:property name="b_t" lazy_eval="false" value="${eq['lift_sensor_bracket_thickness']['value']}"/>
     <xacro:property name="b_h" lazy_eval="false" value="${eq['lift_sensor_bracket_height']['value']}"/>
-    <!-- the sensor-carrying leg's front face, from the sensing face along x -->
-    <xacro:property name="b_x" lazy_eval="false" value="${s_len - eq['lift_sensor_bracket_sensor_leg_from_back']['value']}"/>
+    <xacro:property name="rear_x" lazy_eval="false" value="${-section[0] / 2}"/>
+    <xacro:property name="s_axis_x" lazy_eval="false" value="${rear_x - s_back}"/>
+    <xacro:property name="s_face_y" lazy_eval="false" value="${s_len / 2}"/>
     <xacro:macro name="openamrobot_lift_stop_sensor" params="stop z">
       <link name="lift_stop_sensor_${stop}_link">
         <visual>
-          <origin xyz="${s_len / 2} 0 0" rpy="0 ${pi / 2} 0"/>
-          <geometry><cylinder radius="${eq['lift_stop_sensor_diameter']['value'] / 2}" length="${s_len}"/></geometry>
+          <origin xyz="0 ${-s_len / 2} 0" rpy="${pi / 2} 0 0"/>
+          <geometry><cylinder radius="${s_d / 2}" length="${s_len}"/></geometry>
           <material name="placeholder_geometry"/>
         </visual>
         <collision name="placeholder_lift_stop_sensor">
-          <origin xyz="${s_len / 2} 0 0" rpy="0 ${pi / 2} 0"/>
-          <geometry><cylinder radius="${eq['lift_stop_sensor_diameter']['value'] / 2}" length="${s_len}"/></geometry>
+          <origin xyz="0 ${-s_len / 2} 0" rpy="${pi / 2} 0 0"/>
+          <geometry><cylinder radius="${s_d / 2}" length="${s_len}"/></geometry>
         </collision>
-        <!-- angle bracket: one leg flat on the profile face, one across the sensor (the sensor passes through it) -->
-        <xacro:openamrobot_equipment_box name="placeholder_lift_sensor_bracket_face_leg" size="${[b_leg, b_t, b_h]}"
-                                         xyz="${[b_x - b_leg / 2, b_t / 2 - s_axis_off, 0]}"/>
-        <xacro:openamrobot_equipment_box name="placeholder_lift_sensor_bracket_sensor_leg" size="${[b_t, b_leg, b_h]}"
-                                         xyz="${[b_x - b_t / 2, b_leg / 2 - s_axis_off, 0]}"/>
+        <xacro:openamrobot_equipment_box name="placeholder_lift_sensor_bracket_face_leg" size="${[b_t, b_leg, b_h]}"
+                                         xyz="${[s_back - b_t / 2, -b_leg / 2 - s_face_y, 0]}"/>
+        <xacro:openamrobot_equipment_box name="placeholder_lift_sensor_bracket_sensor_leg" size="${[b_leg, b_t, b_h]}"
+                                         xyz="${[s_back - b_leg / 2, -b_t / 2 - s_face_y, 0]}"/>
       </link>
       <xacro:openamrobot_placeholder_gazebo_material link="lift_stop_sensor_${stop}_link"/>
       <joint name="lift_stop_sensor_${stop}_joint" type="fixed">
         <parent link="lift_column_base_link"/>
         <child link="lift_stop_sensor_${stop}_link"/>
-        <origin xyz="${eq['lift_stop_sensor_face_x']['value']} ${section[1] / 2 + s_axis_off} ${z}" rpy="0 0 0"/>
+        <origin xyz="${s_axis_x} ${s_face_y} ${z}" rpy="0 0 0"/>
       </joint>
     </xacro:macro>
     <xacro:openamrobot_lift_stop_sensor stop="l1000" z="${eq['lift_stop_sensor_z_l1000']['value']}"/>
@@ -187,14 +204,17 @@
       <origin xyz="${-eq['head_camera_bracket_x_behind_lens']['value']} 0 ${profile_top - lens_z}" rpy="0 0 0"/>
     </joint>
 
-    <!-- ===== Flag rod and flag (moving), hanging from the adapter plate underside ===== -->
+    <!-- ===== Flag rod and flag (moving), hanging from the underside of the adapter plate's rear extension (P-03 rev20.4 item 28) =====
+         The rod is behind the sensors (its front face lift_flag_rod_clearance behind the sensor face discs), the flag is bolted to the rod's
+         side face that faces the sensors, its rear edge on the rod's rear face, lift_flag_gap from the sensing faces along y. -->
     <xacro:property name="flag" lazy_eval="false" value="${eq['lift_flag_size']['value']}"/>
     <xacro:property name="rod_w" lazy_eval="false" value="${eq['lift_flag_rod_width']['value']}"/>
     <xacro:property name="rod_len" lazy_eval="false" value="${eq['lift_flag_rod_length']['value']}"/>
-    <xacro:property name="flag_x_back" lazy_eval="false" value="${eq['lift_stop_sensor_face_x']['value'] - eq['lift_flag_gap']['value'] - flag[0]}"/>
-    <!-- rod axis in the carriage frame: behind the flag, outboard of the face by the rod offset -->
-    <xacro:property name="rod_x" lazy_eval="false" value="${flag_x_back - rod_w / 2}"/>
-    <xacro:property name="rod_y" lazy_eval="false" value="${section[1] / 2 + eq['lift_flag_rod_offset_from_face']['value'] + rod_w / 2}"/>
+    <xacro:property name="rod_front_x" lazy_eval="false" value="${s_axis_x - s_d / 2 - eq['lift_flag_rod_clearance']['value']}"/>
+    <xacro:property name="flag_y0" lazy_eval="false" value="${s_face_y + eq['lift_flag_gap']['value']}"/>
+    <!-- rod axis in the carriage frame -->
+    <xacro:property name="rod_x" lazy_eval="false" value="${rod_front_x - rod_w / 2}"/>
+    <xacro:property name="rod_y" lazy_eval="false" value="${flag_y0 + flag[1] + rod_w / 2}"/>
     <link name="lift_flag_rod_link">
       <xacro:openamrobot_equipment_box name="placeholder_lift_flag_rod" size="${[rod_w, rod_w, rod_len]}" xyz="${[0, 0, -rod_len / 2]}"/>
     </link>
@@ -202,8 +222,8 @@
     <joint name="lift_flag_rod_joint" type="fixed">
       <parent link="adapter_plate_link"/>
       <child link="lift_flag_rod_link"/>
-      <!-- adapter_plate_link is at the plate's centre: rear edge flush with the column rear face, plate_t / 2 above its underside -->
-      <origin xyz="${rod_x - (-section[0] / 2 + plate_section[0] / 2)} ${rod_y} ${-plate_t / 2}" rpy="0 0 0"/>
+      <!-- adapter_plate_link is at the plate's centre: rear edge adapter_plate_rear_extension behind the column rear face, plate_t / 2 above its underside -->
+      <origin xyz="${rod_x - plate_centre_x} ${rod_y} ${-plate_t / 2}" rpy="0 0 0"/>
     </joint>
     <link name="lift_flag_link">
       <xacro:openamrobot_equipment_box name="placeholder_lift_flag" size="${flag}" xyz="${[0, 0, 0]}"/>
@@ -212,7 +232,7 @@
     <joint name="lift_flag_joint" type="fixed">
       <parent link="lift_flag_rod_link"/>
       <child link="lift_flag_link"/>
-      <origin xyz="${flag_x_back + flag[0] / 2 - rod_x} ${section[1] / 2 + eq['lift_flag_offset_from_face']['value'] + flag[1] / 2 - rod_y} ${-eq['lift_flag_below_plate']['value']}"
+      <origin xyz="${rod_x - rod_w / 2 + flag[0] / 2 - rod_x} ${flag_y0 + flag[1] / 2 - rod_y} ${-eq['lift_flag_below_plate']['value']}"
               rpy="0 0 0"/>
     </joint>
   </xacro:macro>

@@ -1,0 +1,5267 @@
+# SPDX-License-Identifier: MIT
+# Actuator and electrical ledger for the combined OpenAMRobot 2.0 + OpenArm v2.0 model (proposal).
+#
+# One entry per actuator or bus node. Every quantity is {value, unit, source, status, owner, note?}.
+#   unit    SI (m, s, rad, N, N*m, A, V, kg, bit/s, Hz); "1" for ratios and counts; null for text values.
+#   status  datasheet | supplier_confirmation | upstream_config | upstream_urdf | cad | measured | estimated | proposed | decision | unknown | not_applicable
+#           supplier_confirmation = value confirmed in written supplier communication, not necessarily a published datasheet
+#           proposed  = written in a design or owner proposal, not yet frozen
+#           decision  = recorded owner decision (P-03 item, register entry)
+#   unknown values are null with status unknown and a note naming what would close them.
+#   Never invent a number: a value without a source is not allowed (schema + test enforce this).
+#
+# Owners: custodian Tushar; base and lift Evans; OpenArm Om with Adnan; approver Alex.
+# This file is data only. No URDF, controller, firmware or safety logic reads it yet.
+# Schema: actuator_ledger.schema.json. Test: test/test_actuator_ledger.py.
+ledger_revision: 1
+description: Actuator and electrical ledger for the combined model (proposal, night-shift actuator-ledger)
+actuators:
+- id: drive_hub_motor_left
+  kind: hub_motor
+  description: 'Left drive wheel: hub servo motor with encoder and fail-safe brake, driven by the ZLAC8015D'
+  urdf_joint: left_wheel_joint
+  part:
+    value: ZLTECH ZLLG80ASM250-L-B2 (double shaft, integrated brake, 1024-line encoder, 200 mm wheel)
+    unit: null
+    source: BOM Issue 7.15 row DRV-001; platform-hw @8ed2b06 datasheets/ZLTech/wheel_ZLLG80ASM250 ZLLG80ASM250-L-B2 V1.01 double-shaft drawing (dated 2026-10-09) and readme.md
+    status: datasheet
+    owner: Evans
+  revision:
+    value: V1.01 (drawing dated 2026-10-09)
+    unit: null
+    source: platform-hw @8ed2b06 datasheets/ZLTech/wheel_ZLLG80ASM250 ZLLG80ASM250-L-B2 V1.01 double-shaft drawing (dated 2026-10-09) and readme.md
+    status: datasheet
+    owner: Evans
+    note: Selected 2.0 drivetrain part per the platform-hw readme.
+  bus:
+    value: CAN1 (through the ZLAC8015D, not a bus node itself)
+    unit: null
+    source: P-03 item 4; BOM Issue 7.15 CAN_buses sheet
+    status: decision
+    owner: Evans
+  node_id:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: The motor is an axis of the ZLAC8015D node.
+  bitrate:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: See zlac8015d.
+  control_mode:
+    value: velocity, commanded through the ZLAC8015D
+    unit: null
+    source: BOM Issue 7.15 Technical register DRV-002 (Profile Velocity provisional)
+    status: proposed
+    owner: Evans
+  gear_ratio:
+    value: 1.0
+    unit: '1'
+    source: platform-hw @8ed2b06 datasheets/ZLTech/wheel_ZLLG80ASM250 ZLLG80ASM250-L-B2 V1.01 double-shaft drawing (dated 2026-10-09) and readme.md
+    status: datasheet
+    owner: Evans
+    note: 'Hub motor: the tyre is on the motor. The drawing gives speeds at the wheel.'
+  rated_torque:
+    value: 5.5
+    unit: N*m
+    source: platform-hw @8ed2b06 datasheets/ZLTech/wheel_ZLLG80ASM250 ZLLG80ASM250-L-B2 V1.01 double-shaft drawing (dated 2026-10-09) and readme.md
+    status: datasheet
+    owner: Evans
+  peak_torque:
+    value: 16.0
+    unit: N*m
+    source: platform-hw @8ed2b06 datasheets/ZLTech/wheel_ZLLG80ASM250 ZLLG80ASM250-L-B2 V1.01 double-shaft drawing (dated 2026-10-09) and readme.md
+    status: datasheet
+    owner: Evans
+  rated_speed:
+    value: 20.944
+    unit: rad/s
+    source: platform-hw @8ed2b06 datasheets/ZLTech/wheel_ZLLG80ASM250 ZLLG80ASM250-L-B2 V1.01 double-shaft drawing (dated 2026-10-09) and readme.md (200 rpm)
+    status: datasheet
+    owner: Evans
+  max_speed:
+    value: 27.227
+    unit: rad/s
+    source: platform-hw @8ed2b06 datasheets/ZLTech/wheel_ZLLG80ASM250 ZLLG80ASM250-L-B2 V1.01 double-shaft drawing (dated 2026-10-09) and readme.md (260 rpm peak)
+    status: datasheet
+    owner: Evans
+    note: The robot limit is the 0.5 m/s speed ceiling, see zlac8015d.
+  rated_current:
+    value: 6.5
+    unit: A
+    source: platform-hw @8ed2b06 datasheets/ZLTech/wheel_ZLLG80ASM250 ZLLG80ASM250-L-B2 V1.01 double-shaft drawing (dated 2026-10-09) and readme.md
+    status: datasheet
+    owner: Evans
+  peak_current:
+    value: 19.0
+    unit: A
+    source: platform-hw @8ed2b06 datasheets/ZLTech/wheel_ZLLG80ASM250 ZLLG80ASM250-L-B2 V1.01 double-shaft drawing (dated 2026-10-09) and readme.md
+    status: datasheet
+    owner: Evans
+  rated_voltage:
+    value: 24.0
+    unit: V
+    source: platform-hw @8ed2b06 datasheets/ZLTech/wheel_ZLLG80ASM250 ZLLG80ASM250-L-B2 V1.01 double-shaft drawing (dated 2026-10-09) and readme.md
+    status: datasheet
+    owner: Evans
+  supply_bus_voltage_nominal:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: Powered by the ZLAC8015D, not from a bus.
+  supply_bus_voltage_max:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: Powered by the ZLAC8015D, not from a bus.
+  brake_present:
+    value: true
+    unit: null
+    source: ZLTECH written answer 18 Oct 2026, recorded in P-03 item 21 and BOM Issue 7.15 row DRV-001
+    status: supplier_confirmation
+    owner: Evans
+    note: Engaged with power off, released with power on.
+  brake_holding_torque:
+    value: 6.0
+    unit: N*m
+    source: ZLTECH written answer 18 Oct 2026, recorded in P-03 item 21 and BOM Issue 7.15 row DRV-001
+    status: supplier_confirmation
+    owner: Evans
+    note: Per motor. An earlier supplier answer (21 Sep 2026) said 5 N*m; decision D-25 still open. Brake test on
+      the delivered motor pending.
+  brake_release_time:
+    value: 0.1
+    unit: s
+    source: ZLTECH written answer 18 Oct 2026, recorded in P-03 item 21 and BOM Issue 7.15 row DRV-001
+    status: supplier_confirmation
+    owner: Evans
+    note: At most.
+  brake_engage_time:
+    value: 0.03
+    unit: s
+    source: ZLTECH written answer 18 Oct 2026, recorded in P-03 item 21 and BOM Issue 7.15 row DRV-001
+    status: supplier_confirmation
+    owner: Evans
+    note: At most, without a suppression diode; at most 0.100 s with a plain diode. P-03 item 30 A5 asks for a fast
+      quench and a measured delay chain.
+  brake_coil_voltage:
+    value: 24.0
+    unit: V
+    source: ZLTECH written answer 18 Oct 2026, recorded in P-03 item 21 and BOM Issue 7.15 row DRV-001
+    status: supplier_confirmation
+    owner: Evans
+    note: 12.5 W per motor; fed from the SAFE 24 V converter (P-03 item 21).
+  rotor_inertia:
+    value: null
+    unit: kg*m^2
+    source: null
+    status: unknown
+    owner: Evans
+    note: 'TODO(Evans): ZLTECH rotor mass and inertia. The base model carries the whole 3.45 kg motor on the wheel
+      link (provisional).'
+  joint_damping:
+    value: null
+    unit: N*m*s/rad
+    source: null
+    status: unknown
+    owner: Evans
+    note: No source. platform-sw robo_urdf.urdf.xacro carries damping 0.001 on the wheel joints with no source;
+      spin-down test needed.
+  joint_friction:
+    value: null
+    unit: N*m
+    source: null
+    status: unknown
+    owner: Evans
+    note: No source. platform-sw robo_urdf.urdf.xacro carries friction 0.001 with no source; drive no-load current
+      test needed.
+  heartbeat_period:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: See zlac8015d.
+  comm_timeout:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: See zlac8015d.
+  extra:
+    encoder_lines:
+      value: 1024
+      unit: '1'
+      source: BOM Issue 7.15 Technical register DRV-001 (confirmed by user)
+      status: datasheet
+      owner: Evans
+      note: Lines per revolution; counts and sign convention per axis still open (Q-02).
+    wheel_radius:
+      value: 0.1
+      unit: m
+      source: datums.yaml drive_wheel_radius (P-00 s3.2, 200 mm hub wheel)
+      status: estimated
+      owner: Alex
+      note: Nominal; loaded rolling radius not measured.
+    max_load_per_pair:
+      value: 120.0
+      unit: kg
+      source: ZLTECH written answer 18 Oct 2026, recorded in P-03 item 21 and BOM Issue 7.15 row DRV-001
+      status: datasheet
+      owner: Evans
+      note: Supersedes the 100 kg on the drawing.
+- id: drive_hub_motor_right
+  kind: hub_motor
+  description: 'Right drive wheel: hub servo motor with encoder and fail-safe brake, driven by the ZLAC8015D'
+  urdf_joint: right_wheel_joint
+  part:
+    value: ZLTECH ZLLG80ASM250-L-B2 (double shaft, integrated brake, 1024-line encoder, 200 mm wheel)
+    unit: null
+    source: BOM Issue 7.15 row DRV-001; platform-hw @8ed2b06 datasheets/ZLTech/wheel_ZLLG80ASM250 ZLLG80ASM250-L-B2 V1.01 double-shaft drawing (dated 2026-10-09) and readme.md
+    status: datasheet
+    owner: Evans
+  revision:
+    value: V1.01 (drawing dated 2026-10-09)
+    unit: null
+    source: platform-hw @8ed2b06 datasheets/ZLTech/wheel_ZLLG80ASM250 ZLLG80ASM250-L-B2 V1.01 double-shaft drawing (dated 2026-10-09) and readme.md
+    status: datasheet
+    owner: Evans
+    note: Selected 2.0 drivetrain part per the platform-hw readme.
+  bus:
+    value: CAN1 (through the ZLAC8015D, not a bus node itself)
+    unit: null
+    source: P-03 item 4; BOM Issue 7.15 CAN_buses sheet
+    status: decision
+    owner: Evans
+  node_id:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: The motor is an axis of the ZLAC8015D node.
+  bitrate:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: See zlac8015d.
+  control_mode:
+    value: velocity, commanded through the ZLAC8015D
+    unit: null
+    source: BOM Issue 7.15 Technical register DRV-002 (Profile Velocity provisional)
+    status: proposed
+    owner: Evans
+  gear_ratio:
+    value: 1.0
+    unit: '1'
+    source: platform-hw @8ed2b06 datasheets/ZLTech/wheel_ZLLG80ASM250 ZLLG80ASM250-L-B2 V1.01 double-shaft drawing (dated 2026-10-09) and readme.md
+    status: datasheet
+    owner: Evans
+    note: 'Hub motor: the tyre is on the motor. The drawing gives speeds at the wheel.'
+  rated_torque:
+    value: 5.5
+    unit: N*m
+    source: platform-hw @8ed2b06 datasheets/ZLTech/wheel_ZLLG80ASM250 ZLLG80ASM250-L-B2 V1.01 double-shaft drawing (dated 2026-10-09) and readme.md
+    status: datasheet
+    owner: Evans
+  peak_torque:
+    value: 16.0
+    unit: N*m
+    source: platform-hw @8ed2b06 datasheets/ZLTech/wheel_ZLLG80ASM250 ZLLG80ASM250-L-B2 V1.01 double-shaft drawing (dated 2026-10-09) and readme.md
+    status: datasheet
+    owner: Evans
+  rated_speed:
+    value: 20.944
+    unit: rad/s
+    source: platform-hw @8ed2b06 datasheets/ZLTech/wheel_ZLLG80ASM250 ZLLG80ASM250-L-B2 V1.01 double-shaft drawing (dated 2026-10-09) and readme.md (200 rpm)
+    status: datasheet
+    owner: Evans
+  max_speed:
+    value: 27.227
+    unit: rad/s
+    source: platform-hw @8ed2b06 datasheets/ZLTech/wheel_ZLLG80ASM250 ZLLG80ASM250-L-B2 V1.01 double-shaft drawing (dated 2026-10-09) and readme.md (260 rpm peak)
+    status: datasheet
+    owner: Evans
+    note: The robot limit is the 0.5 m/s speed ceiling, see zlac8015d.
+  rated_current:
+    value: 6.5
+    unit: A
+    source: platform-hw @8ed2b06 datasheets/ZLTech/wheel_ZLLG80ASM250 ZLLG80ASM250-L-B2 V1.01 double-shaft drawing (dated 2026-10-09) and readme.md
+    status: datasheet
+    owner: Evans
+  peak_current:
+    value: 19.0
+    unit: A
+    source: platform-hw @8ed2b06 datasheets/ZLTech/wheel_ZLLG80ASM250 ZLLG80ASM250-L-B2 V1.01 double-shaft drawing (dated 2026-10-09) and readme.md
+    status: datasheet
+    owner: Evans
+  rated_voltage:
+    value: 24.0
+    unit: V
+    source: platform-hw @8ed2b06 datasheets/ZLTech/wheel_ZLLG80ASM250 ZLLG80ASM250-L-B2 V1.01 double-shaft drawing (dated 2026-10-09) and readme.md
+    status: datasheet
+    owner: Evans
+  supply_bus_voltage_nominal:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: Powered by the ZLAC8015D, not from a bus.
+  supply_bus_voltage_max:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: Powered by the ZLAC8015D, not from a bus.
+  brake_present:
+    value: true
+    unit: null
+    source: ZLTECH written answer 18 Oct 2026, recorded in P-03 item 21 and BOM Issue 7.15 row DRV-001
+    status: supplier_confirmation
+    owner: Evans
+    note: Engaged with power off, released with power on.
+  brake_holding_torque:
+    value: 6.0
+    unit: N*m
+    source: ZLTECH written answer 18 Oct 2026, recorded in P-03 item 21 and BOM Issue 7.15 row DRV-001
+    status: supplier_confirmation
+    owner: Evans
+    note: Per motor. An earlier supplier answer (21 Sep 2026) said 5 N*m; decision D-25 still open. Brake test on
+      the delivered motor pending.
+  brake_release_time:
+    value: 0.1
+    unit: s
+    source: ZLTECH written answer 18 Oct 2026, recorded in P-03 item 21 and BOM Issue 7.15 row DRV-001
+    status: supplier_confirmation
+    owner: Evans
+    note: At most.
+  brake_engage_time:
+    value: 0.03
+    unit: s
+    source: ZLTECH written answer 18 Oct 2026, recorded in P-03 item 21 and BOM Issue 7.15 row DRV-001
+    status: supplier_confirmation
+    owner: Evans
+    note: At most, without a suppression diode; at most 0.100 s with a plain diode. P-03 item 30 A5 asks for a fast
+      quench and a measured delay chain.
+  brake_coil_voltage:
+    value: 24.0
+    unit: V
+    source: ZLTECH written answer 18 Oct 2026, recorded in P-03 item 21 and BOM Issue 7.15 row DRV-001
+    status: supplier_confirmation
+    owner: Evans
+    note: 12.5 W per motor; fed from the SAFE 24 V converter (P-03 item 21).
+  rotor_inertia:
+    value: null
+    unit: kg*m^2
+    source: null
+    status: unknown
+    owner: Evans
+    note: 'TODO(Evans): ZLTECH rotor mass and inertia. The base model carries the whole 3.45 kg motor on the wheel
+      link (provisional).'
+  joint_damping:
+    value: null
+    unit: N*m*s/rad
+    source: null
+    status: unknown
+    owner: Evans
+    note: No source. platform-sw robo_urdf.urdf.xacro carries damping 0.001 on the wheel joints with no source;
+      spin-down test needed.
+  joint_friction:
+    value: null
+    unit: N*m
+    source: null
+    status: unknown
+    owner: Evans
+    note: No source. platform-sw robo_urdf.urdf.xacro carries friction 0.001 with no source; drive no-load current
+      test needed.
+  heartbeat_period:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: See zlac8015d.
+  comm_timeout:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: See zlac8015d.
+  extra:
+    encoder_lines:
+      value: 1024
+      unit: '1'
+      source: BOM Issue 7.15 Technical register DRV-001 (confirmed by user)
+      status: datasheet
+      owner: Evans
+      note: Lines per revolution; counts and sign convention per axis still open (Q-02).
+    wheel_radius:
+      value: 0.1
+      unit: m
+      source: datums.yaml drive_wheel_radius (P-00 s3.2, 200 mm hub wheel)
+      status: estimated
+      owner: Alex
+      note: Nominal; loaded rolling radius not measured.
+    max_load_per_pair:
+      value: 120.0
+      unit: kg
+      source: ZLTECH written answer 18 Oct 2026, recorded in P-03 item 21 and BOM Issue 7.15 row DRV-001
+      status: datasheet
+      owner: Evans
+      note: Supersedes the 100 kg on the drawing.
+- id: zlac8015d
+  kind: motor_driver
+  description: Dual-axis CANopen servo driver for both hub motors; the only node on CAN1 besides the STM32
+  urdf_joint: null
+  part:
+    value: ZLTECH ZLAC8015D V4.2
+    unit: null
+    source: BOM Issue 7.15 row DRV-002; register DRIVETRAIN
+    status: datasheet
+    owner: Evans
+  revision:
+    value: V4.2
+    unit: null
+    source: BOM Issue 7.15 row DRV-002
+    status: datasheet
+    owner: Evans
+    note: The V4.2 manual and EDS are not filed (gate Q-03). Values below come from the V4.0 routine and must be
+      confirmed on V4.2.
+  bus:
+    value: CAN1
+    unit: null
+    source: P-03 item 4; register BASE-CONTROLLER-IO
+    status: decision
+    owner: Evans
+  node_id:
+    value: 1
+    unit: '1'
+    source: ZLTECH ZLAC8015D CANopen Communication Routine V1.07 (labelled V4.0; public mirror https://github.com/kaver06/ZLAC8015D_CANOpen_Motor_Controller_simulator
+      @41e2f57 Docs/Datasheets) (object 200Ah default)
+    status: datasheet
+    owner: Evans
+  bitrate:
+    value: 500000
+    unit: bit/s
+    source: ZLTECH ZLAC8015D CANopen Communication Routine V1.07 (labelled V4.0; public mirror https://github.com/kaver06/ZLAC8015D_CANOpen_Motor_Controller_simulator
+      @41e2f57 Docs/Datasheets) (object 200Bh default); BOM Issue 7.15 CAN_buses (provisional)
+    status: datasheet
+    owner: Evans
+  control_mode:
+    value: CiA 301 + CiA 402, profile velocity (6060h = 3), one node for both axes
+    unit: null
+    source: ZLTECH ZLAC8015D CANopen Communication Routine V1.07 (labelled V4.0; public mirror https://github.com/kaver06/ZLAC8015D_CANOpen_Motor_Controller_simulator
+      @41e2f57 Docs/Datasheets)
+    status: proposed
+    owner: Evans
+    note: Target transport (SDO, RPDO or 60FFh sub 3) is an open owner decision.
+  gear_ratio:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: Driver.
+  rated_torque:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: Driver.
+  peak_torque:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: Driver.
+  rated_speed:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: Driver.
+  max_speed:
+    value: 104.72
+    unit: rad/s
+    source: ZLTECH ZLAC8015D CANopen Communication Routine V1.07 (labelled V4.0; public mirror https://github.com/kaver06/ZLAC8015D_CANOpen_Motor_Controller_simulator
+      @41e2f57 Docs/Datasheets) (60FFh range -1000 to 1000 r/min)
+    status: datasheet
+    owner: Evans
+    note: 1000 r/min command range of the driver, not a motor rating.
+  rated_current:
+    value: null
+    unit: A
+    source: null
+    status: unknown
+    owner: Evans
+    note: 'TODO(Evans): per-axis rated current, gate Q-03.'
+  peak_current:
+    value: null
+    unit: A
+    source: null
+    status: unknown
+    owner: Evans
+    note: 'TODO(Evans): per-axis peak current, gate Q-03.'
+  rated_voltage:
+    value: null
+    unit: V
+    source: null
+    status: unknown
+    owner: Evans
+    note: 'TODO(Evans): DC input rating, gate Q-03 (E-01 rev1.8 gate 4).'
+  supply_bus_voltage_nominal:
+    value: 25.6
+    unit: V
+    source: E-01 rev1.8 (SAFE bus 25.6 V nominal, up to 29.2 V); BOM Issue 7.15 Electrical sheet
+    status: decision
+    owner: Evans
+    note: Raw SAFE bus behind K1/K2 (P-03 item 21).
+  supply_bus_voltage_max:
+    value: 29.2
+    unit: V
+    source: E-01 rev1.8 (SAFE bus 25.6 V nominal, up to 29.2 V); BOM Issue 7.15 Electrical sheet
+    status: decision
+    owner: Evans
+    note: Whether the driver input range covers this is gate Q-03.
+  brake_present:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: Brakes are on the motors; see drive_hub_motor_*.
+  brake_holding_torque:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: See drive_hub_motor_*.
+  brake_release_time:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: See drive_hub_motor_*.
+  brake_engage_time:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: See drive_hub_motor_*.
+  brake_coil_voltage:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: See drive_hub_motor_*.
+  rotor_inertia:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: Driver.
+  joint_damping:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: Driver.
+  joint_friction:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: Driver.
+  heartbeat_period:
+    value: 0.1
+    unit: s
+    source: 'decision D-24 (owner decision of 11 Nov 2026, proposed pending bench; platform-fw #17, #38): 1017h
+      producer heartbeat'
+    status: proposed
+    owner: Evans
+    note: Unit of 1017h to be settled by a CAN capture; the earlier rev 5 text is superseded.
+  comm_timeout:
+    value: 0.25
+    unit: s
+    source: 'decision D-24 (owner decision of 11 Nov 2026, proposed pending bench; platform-fw #17, #38): 2000h
+      communication power-down protection time'
+    status: proposed
+    owner: Evans
+    note: 'Open question, not settled: platform-fw #20 still compares 500 ms and 250 ms (Evans). Factory default is 0 (no action on host loss). Written and read back at commissioning, saved (2010h) only
+      after acceptance.'
+  extra:
+    host_heartbeat_consumer_timeout:
+      value: 0.3
+      unit: s
+      source: 'decision D-24 (owner decision of 11 Nov 2026, proposed pending bench; platform-fw #17, #38): STM32
+        consumer for node 1'
+      status: proposed
+      owner: Evans
+    default_accel_decel_time:
+      value: 0.5
+      unit: s
+      source: ZLTECH ZLAC8015D CANopen Communication Routine V1.07 (labelled V4.0; public mirror https://github.com/kaver06/ZLAC8015D_CANOpen_Motor_Controller_simulator
+        @41e2f57 Docs/Datasheets) (6083h, 6084h default)
+      status: datasheet
+      owner: Evans
+      note: Factory ramp time, before the item 30 A6 deceleration limits are written.
+    input_capacitance:
+      value: 0.00094
+      unit: F
+      source: ZLTECH answer 29 Oct 2026, E-01 rev1.8; P-03 item 26
+      status: datasheet
+      owner: Evans
+      note: Plus or minus 10 per cent; 50 to 60 A inrush at switch-on, precharge fitted.
+    base_speed_ceiling:
+      value: 0.5
+      unit: m/s
+      source: register SPEED-CEILING; P-03 item 30 A5
+      status: decision
+      owner: Alex
+      note: Build 1 base speed ceiling.
+    base_decel_travel:
+      value: 1.5
+      unit: m/s^2
+      source: P-03 item 30 A6 (D-29)
+      status: decision
+      owner: Alex
+    base_decel_hold_and_move:
+      value: 1.0
+      unit: m/s^2
+      source: P-03 item 30 A6 (D-29)
+      status: decision
+      owner: Alex
+    cmd_vel_timeout:
+      value: 0.2
+      unit: s
+      source: STM32 /cmd_vel watchdog (I8 rev 4 s5.5, safety state machine rev 3)
+      status: decision
+      owner: Evans
+      note: STM32 retention of the Gate A behaviour is I8 decision 3.
+- id: lift_dold_hexalift_v4_350
+  kind: linear_actuator
+  description: Telescopic lifting column carrying the arms, head camera and tablet; driven only by CTL-017
+  urdf_joint: lift_joint
+  part:
+    value: DOLD Hexalift V4 350 mm, with strap, BS-HM240G350530-MFF24
+    unit: null
+    source: P-03 item 16 (DOLD Hexalift V4, order code BS-HM240G350530-MFF24); BOM Issue 7.15 row MEC-018; DOLD
+      Hexalift telescopic lifters datasheet version 2023_08_16
+    status: datasheet
+    owner: Evans (electrical) / Cuma (mechanical)
+  revision:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Evans (electrical) / Cuma (mechanical)
+    note: Delivered unit revision and CAD release are release gates (P-03 item 16).
+  bus:
+    value: none (motor and Hall wires to CTL-017)
+    unit: null
+    source: P-03 item 30 A7; CTL-017 design
+    status: decision
+    owner: Evans
+  node_id:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans (electrical) / Cuma (mechanical)
+    note: Not a bus node; see ctl017_lift_node.
+  bitrate:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans (electrical) / Cuma (mechanical)
+    note: Not a bus node.
+  control_mode:
+    value: DC motor through an H-bridge on CTL-017; moves only between calibrated stops
+    unit: null
+    source: P-03 item 30 A7; register UPPERBODY-CONTROLLER
+    status: decision
+    owner: Evans
+  gear_ratio:
+    value: null
+    unit: '1'
+    source: null
+    status: unknown
+    owner: Evans (electrical) / Cuma (mechanical)
+    note: Spindle lead and gearbox not in any input.
+  rated_force:
+    value: null
+    unit: N
+    source: null
+    status: unknown
+    owner: Evans (electrical) / Cuma (mechanical)
+    note: Continuous force rating not stated; only push and pull maxima are.
+  peak_force:
+    value: 800.0
+    unit: N
+    source: P-03 item 16 (DOLD Hexalift V4, order code BS-HM240G350530-MFF24); BOM Issue 7.15 row MEC-018; DOLD
+      Hexalift telescopic lifters datasheet version 2023_08_16; datums.yaml lift_max_effort_dold_v4_350
+    status: datasheet
+    owner: Alex
+    note: Push. Pull is 400 N (extra.pull_force). Holding 800 N with power off confirmed in writing 14 Oct 2026,
+      holding test pending.
+  rated_speed:
+    value: null
+    unit: m/s
+    source: null
+    status: unknown
+    owner: Evans (electrical) / Cuma (mechanical)
+    note: Speed under the real load not measured.
+  max_speed:
+    value: 0.018
+    unit: m/s
+    source: P-03 item 16 (DOLD Hexalift V4, order code BS-HM240G350530-MFF24); BOM Issue 7.15 row MEC-018; DOLD
+      Hexalift telescopic lifters datasheet version 2023_08_16; datums.yaml lift_max_velocity_dold_v4_350
+    status: datasheet
+    owner: Alex
+    note: No-load.
+  rated_current:
+    value: null
+    unit: A
+    source: null
+    status: unknown
+    owner: Evans (electrical) / Cuma (mechanical)
+    note: 'TODO(Evans): continuous motor current of the ordered model.'
+  peak_current:
+    value: 7.0
+    unit: A
+    source: 'P-03 item 16; E-01 rev1.8 (lift: DOLD rated 24 V, max 7 A, via SAFE 24 V converter MEAN WELL DDR-240B-24)'
+    status: datasheet
+    owner: Evans (electrical) / Cuma (mechanical)
+    note: Catalogue maximum at 24 V.
+  rated_voltage:
+    value: 24.0
+    unit: V
+    source: P-03 item 16
+    status: datasheet
+    owner: Evans (electrical) / Cuma (mechanical)
+  supply_bus_voltage_nominal:
+    value: 24.0
+    unit: V
+    source: 'E-01 rev1.8 (lift: DOLD rated 24 V, max 7 A, via SAFE 24 V converter MEAN WELL DDR-240B-24)'
+    status: decision
+    owner: Evans
+    note: Regulated SAFE 24 V converter output, removed by an E-stop.
+  supply_bus_voltage_max:
+    value: 24.0
+    unit: V
+    source: 'E-01 rev1.8 (lift: DOLD rated 24 V, max 7 A, via SAFE 24 V converter MEAN WELL DDR-240B-24)'
+    status: decision
+    owner: Evans
+    note: Regulated output; converter input 16.8 to 33.6 V.
+  brake_present:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Evans (electrical) / Cuma (mechanical)
+    note: DOLD confirmed power-off self-holding on 14 Oct 2026; the available evidence does not explicitly confirm whether a separate brake is fitted.
+  brake_holding_torque:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Evans (electrical) / Cuma (mechanical)
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_release_time:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Evans (electrical) / Cuma (mechanical)
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_engage_time:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Evans (electrical) / Cuma (mechanical)
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_coil_voltage:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Evans (electrical) / Cuma (mechanical)
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  rotor_inertia:
+    value: null
+    unit: kg
+    source: null
+    status: unknown
+    owner: Evans (electrical) / Cuma (mechanical)
+    note: Reflected moving mass of the drive train not stated (linear joint, unit kg).
+  joint_damping:
+    value: null
+    unit: N*s/m
+    source: null
+    status: unknown
+    owner: Evans (electrical) / Cuma (mechanical)
+    note: No source; lift_joint has no <dynamics>. Bench test of speed under load and stop overshoot.
+  joint_friction:
+    value: null
+    unit: N
+    source: null
+    status: unknown
+    owner: Evans (electrical) / Cuma (mechanical)
+    note: No source.
+  heartbeat_period:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans (electrical) / Cuma (mechanical)
+    note: Not a bus node.
+  comm_timeout:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans (electrical) / Cuma (mechanical)
+    note: Not a bus node.
+  extra:
+    pull_force:
+      value: 400.0
+      unit: N
+      source: P-03 item 16 (DOLD Hexalift V4, order code BS-HM240G350530-MFF24); BOM Issue 7.15 row MEC-018; DOLD
+        Hexalift telescopic lifters datasheet version 2023_08_16
+      status: datasheet
+      owner: Evans (electrical) / Cuma (mechanical)
+    stroke:
+      value: 0.35
+      unit: m
+      source: P-03 item 16 (DOLD Hexalift V4, order code BS-HM240G350530-MFF24); BOM Issue 7.15 row MEC-018; DOLD
+        Hexalift telescopic lifters datasheet version 2023_08_16
+      status: datasheet
+      owner: Evans (electrical) / Cuma (mechanical)
+    retracted_length:
+      value: 0.53
+      unit: m
+      source: P-03 item 16 (DOLD Hexalift V4, order code BS-HM240G350530-MFF24); BOM Issue 7.15 row MEC-018; DOLD
+        Hexalift telescopic lifters datasheet version 2023_08_16
+      status: datasheet
+      owner: Evans (electrical) / Cuma (mechanical)
+    mass:
+      value: 11.7
+      unit: kg
+      source: P-03 item 16 (DOLD Hexalift V4, order code BS-HM240G350530-MFF24); BOM Issue 7.15 row MEC-018; DOLD
+        Hexalift telescopic lifters datasheet version 2023_08_16; datums.yaml lift_mass_dold_v4_350
+      status: datasheet
+      owner: Alex
+      note: Catalogue; static 8.89 kg and moving 2.81 kg split is an estimate (P-03 item 30 A6).
+    hall_pitch:
+      value: null
+      unit: m
+      source: null
+      status: unknown
+      owner: Evans (electrical) / Cuma (mechanical)
+      note: 'TODO(Evans): Hall counts per mm of stroke for the ordered model.'
+    static_moment_lengthwise:
+      value: 1200.0
+      unit: N*m
+      source: P-03 item 16
+      status: datasheet
+      owner: Evans (electrical) / Cuma (mechanical)
+    dynamic_moment_lengthwise:
+      value: 500.0
+      unit: N*m
+      source: P-03 item 16
+      status: datasheet
+      owner: Evans (electrical) / Cuma (mechanical)
+    static_moment_lateral:
+      value: 450.0
+      unit: N*m
+      source: P-03 item 16
+      status: datasheet
+      owner: Evans (electrical) / Cuma (mechanical)
+    dynamic_moment_lateral:
+      value: 225.0
+      unit: N*m
+      source: P-03 item 16
+      status: datasheet
+      owner: Evans (electrical) / Cuma (mechanical)
+- id: ctl017_lift_node
+  kind: actuator_controller
+  description: 'Upper-body controller on CAN3: lift H-bridge and Halls, three stop sensors, head light, Getac power
+    enable'
+  urdf_joint: null
+  part:
+    value: NUCLEO-G474RE + Infineon BLDC-SHIELD_IFX007T + SN65HVD230 (FDCAN1 PA11/PA12, Halls TIM5 PB2/PC12, current
+      sense PC1)
+    unit: null
+    source: P-03 item 30 A7 (D-11); P-03 item 29 (CTL-017, 8 Nov 2026); register UPPERBODY-CONTROLLER; BOM Issue
+      7.15 row CTL-017
+    status: decision
+    owner: Evans
+  revision:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Evans
+    note: 'No hardware revision; firmware object dictionary baseline is upperbody-fw #15 (draft).'
+  bus:
+    value: CAN3
+    unit: null
+    source: P-03 item 30 A7 (D-11); P-03 item 29 (CTL-017, 8 Nov 2026); register UPPERBODY-CONTROLLER
+    status: decision
+    owner: Evans
+  node_id:
+    value: 16
+    unit: '1'
+    source: CTL-017 lift node design, CAN3 message set proposal (node 0x10)
+    status: proposed
+    owner: Evans
+    note: 'Marked unverified in the design: not found in the decision record.'
+  bitrate:
+    value: 500000
+    unit: bit/s
+    source: CTL-017 lift node design; STM32 peripheral baseline FDCAN3 500 kbit/s
+    status: proposed
+    owner: Evans
+    note: Marked unverified in the design; BOM CAN_buses sheet says to be confirmed.
+  control_mode:
+    value: CANopen (CANopenNode); MOVE_TO_STOP, STOP, CLEAR_FAULT, START_HOMING
+    unit: null
+    source: P-03 item 30 A7 (D-11); P-03 item 29 (CTL-017, 8 Nov 2026); register UPPERBODY-CONTROLLER; CAN3 lift
+      message set proposal rev 23 Oct 2026
+    status: proposed
+    owner: Evans
+    note: 'Custom slave in upperbody-fw #15 departs from the CANopenNode decision (D1); open.'
+  gear_ratio:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: Controller.
+  rated_torque:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: Controller.
+  peak_torque:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: Controller.
+  rated_speed:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: Controller.
+  max_speed:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: Controller.
+  rated_current:
+    value: null
+    unit: A
+    source: null
+    status: unknown
+    owner: Evans
+    note: 'TODO(Evans): lift H-bridge current limit (not in any input).'
+  peak_current:
+    value: null
+    unit: A
+    source: null
+    status: unknown
+    owner: Evans
+    note: 'TODO(Evans): H-bridge peak current trip.'
+  rated_voltage:
+    value: null
+    unit: V
+    source: null
+    status: unknown
+    owner: Evans
+    note: "Controller input voltage rating is not established by E-01; 24 V describes the configured supply rail, recorded separately under supply_bus_voltage_nominal."
+  supply_bus_voltage_nominal:
+    value: 24.0
+    unit: V
+    source: E-01 rev1.8
+    status: decision
+    owner: Evans
+  supply_bus_voltage_max:
+    value: null
+    unit: V
+    source: null
+    status: unknown
+    owner: Evans
+    note: Regulated rail tolerance not stated.
+  brake_present:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: Controller.
+  brake_holding_torque:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: Controller.
+  brake_release_time:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: Controller.
+  brake_engage_time:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: Controller.
+  brake_coil_voltage:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: Controller.
+  rotor_inertia:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: Controller.
+  joint_damping:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: Controller.
+  joint_friction:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: Controller.
+  heartbeat_period:
+    value: 0.1
+    unit: s
+    source: CAN3 lift message set proposal rev 23 Oct 2026, section 4
+    status: proposed
+    owner: Evans
+    note: Proposal, unverified; to be frozen in the CTL-017 object dictionary.
+  comm_timeout:
+    value: 0.3
+    unit: s
+    source: CAN3 lift message set proposal rev 23 Oct 2026, section 4 (node-lost, 3 missed heartbeats; command keep-alive
+      supervision 300 ms)
+    status: proposed
+    owner: Evans
+  extra:
+    travel_timeout:
+      value: null
+      unit: s
+      source: null
+      status: unknown
+      owner: Evans
+      note: 'TODO(Evans): travel-timeout value (P-03 item 30 A7 requires the check, gives no number).'
+    hall_window:
+      value: null
+      unit: '1'
+      source: null
+      status: unknown
+      owner: Evans
+      note: 'TODO(Evans): Hall-window check tolerance.'
+    standstill_timeout:
+      value: 0.5
+      unit: s
+      source: CTL-017 lift node design (F08 starting value)
+      status: proposed
+      owner: Evans
+      note: Final value is open question Q4.
+    stop_inset_from_end_switch:
+      value: 0.002
+      unit: m
+      source: CTL-017 lift node design (stops 0 and 2 sit 2 mm inside the end switches)
+      status: proposed
+      owner: Evans
+    aux_status_stale:
+      value: 0.6
+      unit: s
+      source: 'I8 rev 4 (frozen 6 Nov): /base/aux_status 5 Hz, stale after 0.6 s'
+      status: decision
+      owner: Evans
+- id: daly_bms
+  kind: bus_node
+  description: Battery management system; reports faults and SOC on CAN2 through the CTL-014 isolator; not an actuator
+  urdf_joint: null
+  part:
+    value: Daly M-series smart BMS, 8S LiFePO4, 150 A common port
+    unit: null
+    source: BOM Issue 7.15 row PWR-002 and CAN_buses sheet
+    status: decision
+    owner: Evans
+  revision:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Evans
+    note: Exact order code pending (BOM PWR-002).
+  bus:
+    value: CAN2
+    unit: null
+    source: P-03 item 4; BOM Issue 7.15 row PWR-002 and CAN_buses sheet
+    status: decision
+    owner: Evans
+  node_id:
+    value: 0x01 (BMS address in 29-bit IDs 0x18100140 / 0x18104001)
+    unit: null
+    source: Daly CAN Communications Protocol V1.0 (2019), as recorded in the firmware design
+    status: estimated
+    owner: Evans
+    note: Not confirmed for the delivered order code.
+  bitrate:
+    value: 250000
+    unit: bit/s
+    source: BOM Issue 7.15 row PWR-002 and CAN_buses sheet (proposed by P-03 rev18.2)
+    status: proposed
+    owner: Evans
+  control_mode:
+    value: proprietary request/response, not CANopen; Data IDs 0x90 to 0x98
+    unit: null
+    source: Daly CAN Communications Protocol V1.0 (2019)
+    status: estimated
+    owner: Evans
+    note: Protocol unconfirmed for the delivered unit.
+  gear_ratio:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: Not an actuator.
+  rated_torque:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: Not an actuator.
+  peak_torque:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: Not an actuator.
+  rated_speed:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: Not an actuator.
+  max_speed:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: Not an actuator.
+  rated_current:
+    value: null
+    unit: A
+    source: null
+    status: unknown
+    owner: Evans
+    note: "Exact BMS order code and manufacturer current rating are unverified; 150 A is recorded in the BOM as the configured common-port rating."
+  peak_current:
+    value: null
+    unit: A
+    source: null
+    status: unknown
+    owner: Evans
+    note: Not stated.
+  rated_voltage:
+    value: null
+    unit: V
+    source: null
+    status: unknown
+    owner: Evans
+    note: "Exact BMS voltage rating is unverified; 25.6 V is the nominal voltage of the configured 8S LiFePO4 pack, recorded separately under supply_bus_voltage_nominal."
+  supply_bus_voltage_nominal:
+    value: 25.6
+    unit: V
+    source: BOM Issue 7.15 row PWR-001
+    status: decision
+    owner: Evans
+  supply_bus_voltage_max:
+    value: 29.2
+    unit: V
+    source: E-01 rev1.8
+    status: decision
+    owner: Evans
+  brake_present:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: Not an actuator.
+  brake_holding_torque:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: Not an actuator.
+  brake_release_time:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: Not an actuator.
+  brake_engage_time:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: Not an actuator.
+  brake_coil_voltage:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: Not an actuator.
+  rotor_inertia:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: Not an actuator.
+  joint_damping:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: Not an actuator.
+  joint_friction:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: Not an actuator.
+  heartbeat_period:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Evans
+    note: Polled, no heartbeat.
+  comm_timeout:
+    value: null
+    unit: s
+    source: null
+    status: unknown
+    owner: Evans
+    note: 'TODO(Evans): BMS stale timeout on the STM32 (BMS stale latches LOCKED in the safety state machine).'
+  extra:
+    poll_rate:
+      value: 5.0
+      unit: Hz
+      source: BOM Issue 7.15 row PWR-002 and CAN_buses sheet (proposed)
+      status: proposed
+      owner: Evans
+- id: openarm_left_joint1
+  kind: joint_motor
+  description: OpenArm v2.0 left arm joint 1 motor
+  urdf_joint: openarm_left_joint1
+  part:
+    value: DAMIAO DM-J8009P-2EC
+    unit: null
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: datasheet
+    owner: Om with Adnan
+  revision:
+    value: OpenArm v2.0 kit, upstream pin openarm_description @14ff67b
+    unit: null
+    source: config/upstream_pins.yaml
+    status: decision
+    owner: Om with Adnan
+    note: Delivered kit revision not yet recorded.
+  bus:
+    value: can1
+    unit: null
+    source: openarm docs @e15e09e website/docs/setup/openarm-setup/1-motor-id.mdx; openarm_description @14ff67b
+      assets/robot/openarm_v2.0/urdf/ros2_control/openarm.bimanual.ros2_control.xacro
+    status: upstream_config
+    owner: Om with Adnan
+    note: Upstream default naming (right arm can0, left arm can1); the robot's SocketCAN names are set at bring-up.
+  node_id:
+    value: send 0x01, receive 0x11
+    unit: null
+    source: openarm docs @e15e09e website/docs/setup/openarm-setup/1-motor-id.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+    note: Same IDs on both arms; the arms are separated by bus.
+  bitrate:
+    value: 1000000
+    unit: bit/s
+    source: openarm docs @e15e09e 2-can-setup.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+    note: 'CAN FD: arbitration 1 Mbit/s, data 5 Mbit/s, BRS on every frame.'
+  control_mode:
+    value: MIT (position, velocity, feed-forward torque with kp, kd)
+    unit: null
+    source: openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+  gear_ratio:
+    value: 9.0
+    unit: '1'
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+  rated_torque:
+    value: 20.0
+    unit: N*m
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Output side.
+  peak_torque:
+    value: 40.0
+    unit: N*m
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: URDF effort limit is 40 N*m (openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml).
+  rated_speed:
+    value: 10.472
+    unit: rad/s
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx (100 rpm at 24 V)
+    status: datasheet
+    owner: Om with Adnan
+  max_speed:
+    value: 16.7552
+    unit: rad/s
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx (160 rpm no-load at 24 V)
+    status: datasheet
+    owner: Om with Adnan
+    note: URDF velocity limit is 16.755 rad/s (openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml).
+  rated_current:
+    value: 20.0
+    unit: A
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Motor phase current, not bus current.
+  peak_current:
+    value: 50.0
+    unit: A
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Motor phase current, not bus current.
+  rated_voltage:
+    value: 24.0
+    unit: V
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: DM-J8009P supports 24 to 48 V.
+  supply_bus_voltage_nominal:
+    value: 25.6
+    unit: V
+    source: E-01 rev1.8 (arms on the raw SAFE bus, 25.6 V nominal, up to 29.2 V; gate ARM-VOLT open)
+    status: decision
+    owner: Evans
+  supply_bus_voltage_max:
+    value: 29.2
+    unit: V
+    source: E-01 rev1.8 (arms on the raw SAFE bus, 25.6 V nominal, up to 29.2 V; gate ARM-VOLT open)
+    status: decision
+    owner: Evans
+    note: Above the 24 V motor rating; confirming the supplier limit is gate ARM-VOLT (Om / Alex).
+  brake_present:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: OpenArm safety guide reports high backdrivability and rapid load fall on power loss; it does not specify whether a separate brake is fitted.
+  brake_holding_torque:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_release_time:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_engage_time:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_coil_voltage:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  rotor_inertia:
+    value: null
+    unit: kg*m^2
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'TODO(Om): DAMIAO datasheet rotor inertia (not in the OpenArm docs).'
+  joint_damping:
+    value: null
+    unit: N*m*s/rad
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'No upstream value: no <dynamics> and openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/friction.yaml
+      (empty). Identification test needed.'
+  joint_friction:
+    value: null
+    unit: N*m
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'No upstream value: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/friction.yaml
+      (empty). Identification test needed.'
+  heartbeat_period:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Om with Adnan
+    note: MIT protocol has no heartbeat; each command gets a reply.
+  comm_timeout:
+    value: null
+    unit: s
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'TODO(Om): DAMIAO comm-loss protection time is a motor register; value not in any input.'
+  extra:
+    joint_lower_limit:
+      value: -3.4907
+      unit: rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml (left preset
+        reflect)
+      status: upstream_urdf
+      owner: Om with Adnan
+    joint_upper_limit:
+      value: 1.3963
+      unit: rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml (left preset
+        reflect)
+      status: upstream_urdf
+      owner: Om with Adnan
+    urdf_effort_limit:
+      value: 40.0
+      unit: N*m
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    urdf_velocity_limit:
+      value: 16.755
+      unit: rad/s
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    mit_p_max:
+      value: 12.5
+      unit: rad
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_v_max:
+      value: 45.0
+      unit: rad/s
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_t_max:
+      value: 54.0
+      unit: N*m
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_kp:
+      value: 70.0
+      unit: N*m/rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/control_gains.yaml
+      status: upstream_config
+      owner: Om with Adnan
+    mit_kd:
+      value: 2.75
+      unit: N*m*s/rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/control_gains.yaml
+      status: upstream_config
+      owner: Om with Adnan
+    motor_mass:
+      value: 0.896
+      unit: kg
+      source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+      status: datasheet
+      owner: Om with Adnan
+- id: openarm_left_joint2
+  kind: joint_motor
+  description: OpenArm v2.0 left arm joint 2 motor
+  urdf_joint: openarm_left_joint2
+  part:
+    value: DAMIAO DM-J8009P-2EC
+    unit: null
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: datasheet
+    owner: Om with Adnan
+  revision:
+    value: OpenArm v2.0 kit, upstream pin openarm_description @14ff67b
+    unit: null
+    source: config/upstream_pins.yaml
+    status: decision
+    owner: Om with Adnan
+    note: Delivered kit revision not yet recorded.
+  bus:
+    value: can1
+    unit: null
+    source: openarm docs @e15e09e website/docs/setup/openarm-setup/1-motor-id.mdx; openarm_description @14ff67b
+      assets/robot/openarm_v2.0/urdf/ros2_control/openarm.bimanual.ros2_control.xacro
+    status: upstream_config
+    owner: Om with Adnan
+    note: Upstream default naming (right arm can0, left arm can1); the robot's SocketCAN names are set at bring-up.
+  node_id:
+    value: send 0x02, receive 0x12
+    unit: null
+    source: openarm docs @e15e09e website/docs/setup/openarm-setup/1-motor-id.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+    note: Same IDs on both arms; the arms are separated by bus.
+  bitrate:
+    value: 1000000
+    unit: bit/s
+    source: openarm docs @e15e09e 2-can-setup.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+    note: 'CAN FD: arbitration 1 Mbit/s, data 5 Mbit/s, BRS on every frame.'
+  control_mode:
+    value: MIT (position, velocity, feed-forward torque with kp, kd)
+    unit: null
+    source: openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+  gear_ratio:
+    value: 9.0
+    unit: '1'
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+  rated_torque:
+    value: 20.0
+    unit: N*m
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Output side.
+  peak_torque:
+    value: 40.0
+    unit: N*m
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: URDF effort limit is 40 N*m (openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml).
+  rated_speed:
+    value: 10.472
+    unit: rad/s
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx (100 rpm at 24 V)
+    status: datasheet
+    owner: Om with Adnan
+  max_speed:
+    value: 16.7552
+    unit: rad/s
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx (160 rpm no-load at 24 V)
+    status: datasheet
+    owner: Om with Adnan
+    note: URDF velocity limit is 16.755 rad/s (openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml).
+  rated_current:
+    value: 20.0
+    unit: A
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Motor phase current, not bus current.
+  peak_current:
+    value: 50.0
+    unit: A
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Motor phase current, not bus current.
+  rated_voltage:
+    value: 24.0
+    unit: V
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: DM-J8009P supports 24 to 48 V.
+  supply_bus_voltage_nominal:
+    value: 25.6
+    unit: V
+    source: E-01 rev1.8 (arms on the raw SAFE bus, 25.6 V nominal, up to 29.2 V; gate ARM-VOLT open)
+    status: decision
+    owner: Evans
+  supply_bus_voltage_max:
+    value: 29.2
+    unit: V
+    source: E-01 rev1.8 (arms on the raw SAFE bus, 25.6 V nominal, up to 29.2 V; gate ARM-VOLT open)
+    status: decision
+    owner: Evans
+    note: Above the 24 V motor rating; confirming the supplier limit is gate ARM-VOLT (Om / Alex).
+  brake_present:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: OpenArm safety guide reports high backdrivability and rapid load fall on power loss; it does not specify whether a separate brake is fitted.
+  brake_holding_torque:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_release_time:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_engage_time:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_coil_voltage:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  rotor_inertia:
+    value: null
+    unit: kg*m^2
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'TODO(Om): DAMIAO datasheet rotor inertia (not in the OpenArm docs).'
+  joint_damping:
+    value: null
+    unit: N*m*s/rad
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'No upstream value: no <dynamics> and openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/friction.yaml
+      (empty). Identification test needed.'
+  joint_friction:
+    value: null
+    unit: N*m
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'No upstream value: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/friction.yaml
+      (empty). Identification test needed.'
+  heartbeat_period:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Om with Adnan
+    note: MIT protocol has no heartbeat; each command gets a reply.
+  comm_timeout:
+    value: null
+    unit: s
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'TODO(Om): DAMIAO comm-loss protection time is a motor register; value not in any input.'
+  extra:
+    joint_lower_limit:
+      value: -3.3161
+      unit: rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml (left preset
+        reflect)
+      status: upstream_urdf
+      owner: Om with Adnan
+    joint_upper_limit:
+      value: 0.17453
+      unit: rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml (left preset
+        reflect)
+      status: upstream_urdf
+      owner: Om with Adnan
+    urdf_effort_limit:
+      value: 40.0
+      unit: N*m
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    urdf_velocity_limit:
+      value: 16.755
+      unit: rad/s
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    mit_p_max:
+      value: 12.5
+      unit: rad
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_v_max:
+      value: 45.0
+      unit: rad/s
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_t_max:
+      value: 54.0
+      unit: N*m
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_kp:
+      value: 70.0
+      unit: N*m/rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/control_gains.yaml
+      status: upstream_config
+      owner: Om with Adnan
+    mit_kd:
+      value: 2.5
+      unit: N*m*s/rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/control_gains.yaml
+      status: upstream_config
+      owner: Om with Adnan
+    motor_mass:
+      value: 0.896
+      unit: kg
+      source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+      status: datasheet
+      owner: Om with Adnan
+- id: openarm_left_joint3
+  kind: joint_motor
+  description: OpenArm v2.0 left arm joint 3 motor
+  urdf_joint: openarm_left_joint3
+  part:
+    value: DAMIAO DM4340 series (DM-J4340P-2EC)
+    unit: null
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: datasheet
+    owner: Om with Adnan
+  revision:
+    value: OpenArm v2.0 kit, upstream pin openarm_description @14ff67b
+    unit: null
+    source: config/upstream_pins.yaml
+    status: decision
+    owner: Om with Adnan
+    note: Delivered kit revision not yet recorded.
+  bus:
+    value: can1
+    unit: null
+    source: openarm docs @e15e09e website/docs/setup/openarm-setup/1-motor-id.mdx; openarm_description @14ff67b
+      assets/robot/openarm_v2.0/urdf/ros2_control/openarm.bimanual.ros2_control.xacro
+    status: upstream_config
+    owner: Om with Adnan
+    note: Upstream default naming (right arm can0, left arm can1); the robot's SocketCAN names are set at bring-up.
+  node_id:
+    value: send 0x03, receive 0x13
+    unit: null
+    source: openarm docs @e15e09e website/docs/setup/openarm-setup/1-motor-id.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+    note: Same IDs on both arms; the arms are separated by bus.
+  bitrate:
+    value: 1000000
+    unit: bit/s
+    source: openarm docs @e15e09e 2-can-setup.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+    note: 'CAN FD: arbitration 1 Mbit/s, data 5 Mbit/s, BRS on every frame.'
+  control_mode:
+    value: MIT (position, velocity, feed-forward torque with kp, kd)
+    unit: null
+    source: openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+  gear_ratio:
+    value: 40.0
+    unit: '1'
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+  rated_torque:
+    value: 9.0
+    unit: N*m
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Output side.
+  peak_torque:
+    value: 27.0
+    unit: N*m
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: URDF effort limit is 27 N*m (openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml).
+  rated_speed:
+    value: 3.7699
+    unit: rad/s
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx (36 rpm at 24 V)
+    status: datasheet
+    owner: Om with Adnan
+  max_speed:
+    value: 5.4454
+    unit: rad/s
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx (52 rpm no-load at 24 V)
+    status: datasheet
+    owner: Om with Adnan
+    note: URDF velocity limit is 5.4454 rad/s (openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml).
+  rated_current:
+    value: 2.5
+    unit: A
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Motor phase current, not bus current.
+  peak_current:
+    value: 8.0
+    unit: A
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Motor phase current, not bus current.
+  rated_voltage:
+    value: 24.0
+    unit: V
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+  supply_bus_voltage_nominal:
+    value: 25.6
+    unit: V
+    source: E-01 rev1.8 (arms on the raw SAFE bus, 25.6 V nominal, up to 29.2 V; gate ARM-VOLT open)
+    status: decision
+    owner: Evans
+  supply_bus_voltage_max:
+    value: 29.2
+    unit: V
+    source: E-01 rev1.8 (arms on the raw SAFE bus, 25.6 V nominal, up to 29.2 V; gate ARM-VOLT open)
+    status: decision
+    owner: Evans
+    note: Above the 24 V motor rating; confirming the supplier limit is gate ARM-VOLT (Om / Alex).
+  brake_present:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: OpenArm safety guide reports high backdrivability and rapid load fall on power loss; it does not specify whether a separate brake is fitted.
+  brake_holding_torque:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_release_time:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_engage_time:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_coil_voltage:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  rotor_inertia:
+    value: null
+    unit: kg*m^2
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'TODO(Om): DAMIAO datasheet rotor inertia (not in the OpenArm docs).'
+  joint_damping:
+    value: null
+    unit: N*m*s/rad
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'No upstream value: no <dynamics> and openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/friction.yaml
+      (empty). Identification test needed.'
+  joint_friction:
+    value: null
+    unit: N*m
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'No upstream value: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/friction.yaml
+      (empty). Identification test needed.'
+  heartbeat_period:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Om with Adnan
+    note: MIT protocol has no heartbeat; each command gets a reply.
+  comm_timeout:
+    value: null
+    unit: s
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'TODO(Om): DAMIAO comm-loss protection time is a motor register; value not in any input.'
+  extra:
+    joint_lower_limit:
+      value: -1.5708
+      unit: rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    joint_upper_limit:
+      value: 1.5708
+      unit: rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    urdf_effort_limit:
+      value: 27.0
+      unit: N*m
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    urdf_velocity_limit:
+      value: 5.4454
+      unit: rad/s
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    mit_p_max:
+      value: 12.5
+      unit: rad
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_v_max:
+      value: 10.0
+      unit: rad/s
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_t_max:
+      value: 28.0
+      unit: N*m
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_kp:
+      value: 70.0
+      unit: N*m/rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/control_gains.yaml
+      status: upstream_config
+      owner: Om with Adnan
+    mit_kd:
+      value: 2.0
+      unit: N*m*s/rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/control_gains.yaml
+      status: upstream_config
+      owner: Om with Adnan
+    motor_mass:
+      value: 0.362
+      unit: kg
+      source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+      status: datasheet
+      owner: Om with Adnan
+- id: openarm_left_joint4
+  kind: joint_motor
+  description: OpenArm v2.0 left arm joint 4 motor
+  urdf_joint: openarm_left_joint4
+  part:
+    value: DAMIAO DM4340 series (DM-J4340P-2EC)
+    unit: null
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: datasheet
+    owner: Om with Adnan
+  revision:
+    value: OpenArm v2.0 kit, upstream pin openarm_description @14ff67b
+    unit: null
+    source: config/upstream_pins.yaml
+    status: decision
+    owner: Om with Adnan
+    note: Delivered kit revision not yet recorded.
+  bus:
+    value: can1
+    unit: null
+    source: openarm docs @e15e09e website/docs/setup/openarm-setup/1-motor-id.mdx; openarm_description @14ff67b
+      assets/robot/openarm_v2.0/urdf/ros2_control/openarm.bimanual.ros2_control.xacro
+    status: upstream_config
+    owner: Om with Adnan
+    note: Upstream default naming (right arm can0, left arm can1); the robot's SocketCAN names are set at bring-up.
+  node_id:
+    value: send 0x04, receive 0x14
+    unit: null
+    source: openarm docs @e15e09e website/docs/setup/openarm-setup/1-motor-id.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+    note: Same IDs on both arms; the arms are separated by bus.
+  bitrate:
+    value: 1000000
+    unit: bit/s
+    source: openarm docs @e15e09e 2-can-setup.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+    note: 'CAN FD: arbitration 1 Mbit/s, data 5 Mbit/s, BRS on every frame.'
+  control_mode:
+    value: MIT (position, velocity, feed-forward torque with kp, kd)
+    unit: null
+    source: openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+  gear_ratio:
+    value: 40.0
+    unit: '1'
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+  rated_torque:
+    value: 9.0
+    unit: N*m
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Output side.
+  peak_torque:
+    value: 27.0
+    unit: N*m
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: URDF effort limit is 27 N*m (openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml).
+  rated_speed:
+    value: 3.7699
+    unit: rad/s
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx (36 rpm at 24 V)
+    status: datasheet
+    owner: Om with Adnan
+  max_speed:
+    value: 5.4454
+    unit: rad/s
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx (52 rpm no-load at 24 V)
+    status: datasheet
+    owner: Om with Adnan
+    note: URDF velocity limit is 5.4454 rad/s (openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml).
+  rated_current:
+    value: 2.5
+    unit: A
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Motor phase current, not bus current.
+  peak_current:
+    value: 8.0
+    unit: A
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Motor phase current, not bus current.
+  rated_voltage:
+    value: 24.0
+    unit: V
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+  supply_bus_voltage_nominal:
+    value: 25.6
+    unit: V
+    source: E-01 rev1.8 (arms on the raw SAFE bus, 25.6 V nominal, up to 29.2 V; gate ARM-VOLT open)
+    status: decision
+    owner: Evans
+  supply_bus_voltage_max:
+    value: 29.2
+    unit: V
+    source: E-01 rev1.8 (arms on the raw SAFE bus, 25.6 V nominal, up to 29.2 V; gate ARM-VOLT open)
+    status: decision
+    owner: Evans
+    note: Above the 24 V motor rating; confirming the supplier limit is gate ARM-VOLT (Om / Alex).
+  brake_present:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: OpenArm safety guide reports high backdrivability and rapid load fall on power loss; it does not specify whether a separate brake is fitted.
+  brake_holding_torque:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_release_time:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_engage_time:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_coil_voltage:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  rotor_inertia:
+    value: null
+    unit: kg*m^2
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'TODO(Om): DAMIAO datasheet rotor inertia (not in the OpenArm docs).'
+  joint_damping:
+    value: null
+    unit: N*m*s/rad
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'No upstream value: no <dynamics> and openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/friction.yaml
+      (empty). Identification test needed.'
+  joint_friction:
+    value: null
+    unit: N*m
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'No upstream value: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/friction.yaml
+      (empty). Identification test needed.'
+  heartbeat_period:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Om with Adnan
+    note: MIT protocol has no heartbeat; each command gets a reply.
+  comm_timeout:
+    value: null
+    unit: s
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'TODO(Om): DAMIAO comm-loss protection time is a motor register; value not in any input.'
+  extra:
+    joint_lower_limit:
+      value: 0.0
+      unit: rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    joint_upper_limit:
+      value: 2.4435
+      unit: rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    urdf_effort_limit:
+      value: 27.0
+      unit: N*m
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    urdf_velocity_limit:
+      value: 5.4454
+      unit: rad/s
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    mit_p_max:
+      value: 12.5
+      unit: rad
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_v_max:
+      value: 10.0
+      unit: rad/s
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_t_max:
+      value: 28.0
+      unit: N*m
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_kp:
+      value: 60.0
+      unit: N*m/rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/control_gains.yaml
+      status: upstream_config
+      owner: Om with Adnan
+    mit_kd:
+      value: 2.0
+      unit: N*m*s/rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/control_gains.yaml
+      status: upstream_config
+      owner: Om with Adnan
+    motor_mass:
+      value: 0.362
+      unit: kg
+      source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+      status: datasheet
+      owner: Om with Adnan
+- id: openarm_left_joint5
+  kind: joint_motor
+  description: OpenArm v2.0 left arm joint 5 motor
+  urdf_joint: openarm_left_joint5
+  part:
+    value: DAMIAO DM-J4310-2EC V1.1
+    unit: null
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: datasheet
+    owner: Om with Adnan
+  revision:
+    value: OpenArm v2.0 kit, upstream pin openarm_description @14ff67b
+    unit: null
+    source: config/upstream_pins.yaml
+    status: decision
+    owner: Om with Adnan
+    note: Delivered kit revision not yet recorded.
+  bus:
+    value: can1
+    unit: null
+    source: openarm docs @e15e09e website/docs/setup/openarm-setup/1-motor-id.mdx; openarm_description @14ff67b
+      assets/robot/openarm_v2.0/urdf/ros2_control/openarm.bimanual.ros2_control.xacro
+    status: upstream_config
+    owner: Om with Adnan
+    note: Upstream default naming (right arm can0, left arm can1); the robot's SocketCAN names are set at bring-up.
+  node_id:
+    value: send 0x05, receive 0x15
+    unit: null
+    source: openarm docs @e15e09e website/docs/setup/openarm-setup/1-motor-id.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+    note: Same IDs on both arms; the arms are separated by bus.
+  bitrate:
+    value: 1000000
+    unit: bit/s
+    source: openarm docs @e15e09e 2-can-setup.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+    note: 'CAN FD: arbitration 1 Mbit/s, data 5 Mbit/s, BRS on every frame.'
+  control_mode:
+    value: MIT (position, velocity, feed-forward torque with kp, kd)
+    unit: null
+    source: openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+  gear_ratio:
+    value: 10.0
+    unit: '1'
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+  rated_torque:
+    value: 3.0
+    unit: N*m
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Output side.
+  peak_torque:
+    value: 7.0
+    unit: N*m
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: URDF effort limit is 7 N*m (openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml).
+      Rated is 3 N*m; sustained loads above it overheat the wrist.
+  rated_speed:
+    value: 12.5664
+    unit: rad/s
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx (120 rpm at 24 V)
+    status: datasheet
+    owner: Om with Adnan
+  max_speed:
+    value: 20.944
+    unit: rad/s
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx (200 rpm no-load at 24 V)
+    status: datasheet
+    owner: Om with Adnan
+    note: URDF velocity limit is 20.944 rad/s (openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml).
+  rated_current:
+    value: 2.5
+    unit: A
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Motor phase current, not bus current.
+  peak_current:
+    value: 7.5
+    unit: A
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Motor phase current, not bus current.
+  rated_voltage:
+    value: 24.0
+    unit: V
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+  supply_bus_voltage_nominal:
+    value: 25.6
+    unit: V
+    source: E-01 rev1.8 (arms on the raw SAFE bus, 25.6 V nominal, up to 29.2 V; gate ARM-VOLT open)
+    status: decision
+    owner: Evans
+  supply_bus_voltage_max:
+    value: 29.2
+    unit: V
+    source: E-01 rev1.8 (arms on the raw SAFE bus, 25.6 V nominal, up to 29.2 V; gate ARM-VOLT open)
+    status: decision
+    owner: Evans
+    note: Above the 24 V motor rating; confirming the supplier limit is gate ARM-VOLT (Om / Alex).
+  brake_present:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: OpenArm safety guide reports high backdrivability and rapid load fall on power loss; it does not specify whether a separate brake is fitted.
+  brake_holding_torque:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_release_time:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_engage_time:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_coil_voltage:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  rotor_inertia:
+    value: null
+    unit: kg*m^2
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'TODO(Om): DAMIAO datasheet rotor inertia (not in the OpenArm docs).'
+  joint_damping:
+    value: null
+    unit: N*m*s/rad
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'No upstream value: no <dynamics> and openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/friction.yaml
+      (empty). Identification test needed.'
+  joint_friction:
+    value: null
+    unit: N*m
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'No upstream value: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/friction.yaml
+      (empty). Identification test needed.'
+  heartbeat_period:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Om with Adnan
+    note: MIT protocol has no heartbeat; each command gets a reply.
+  comm_timeout:
+    value: null
+    unit: s
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'TODO(Om): DAMIAO comm-loss protection time is a motor register; value not in any input.'
+  extra:
+    joint_lower_limit:
+      value: -1.5708
+      unit: rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    joint_upper_limit:
+      value: 1.5708
+      unit: rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    urdf_effort_limit:
+      value: 7.0
+      unit: N*m
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    urdf_velocity_limit:
+      value: 20.944
+      unit: rad/s
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    mit_p_max:
+      value: 12.5
+      unit: rad
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_v_max:
+      value: 30.0
+      unit: rad/s
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_t_max:
+      value: 10.0
+      unit: N*m
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_kp:
+      value: 10.0
+      unit: N*m/rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/control_gains.yaml
+      status: upstream_config
+      owner: Om with Adnan
+    mit_kd:
+      value: 0.7
+      unit: N*m*s/rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/control_gains.yaml
+      status: upstream_config
+      owner: Om with Adnan
+    motor_mass:
+      value: 0.3
+      unit: kg
+      source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+      status: datasheet
+      owner: Om with Adnan
+- id: openarm_left_joint6
+  kind: joint_motor
+  description: OpenArm v2.0 left arm joint 6 motor
+  urdf_joint: openarm_left_joint6
+  part:
+    value: DAMIAO DM-J4310-2EC V1.1
+    unit: null
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: datasheet
+    owner: Om with Adnan
+  revision:
+    value: OpenArm v2.0 kit, upstream pin openarm_description @14ff67b
+    unit: null
+    source: config/upstream_pins.yaml
+    status: decision
+    owner: Om with Adnan
+    note: Delivered kit revision not yet recorded.
+  bus:
+    value: can1
+    unit: null
+    source: openarm docs @e15e09e website/docs/setup/openarm-setup/1-motor-id.mdx; openarm_description @14ff67b
+      assets/robot/openarm_v2.0/urdf/ros2_control/openarm.bimanual.ros2_control.xacro
+    status: upstream_config
+    owner: Om with Adnan
+    note: Upstream default naming (right arm can0, left arm can1); the robot's SocketCAN names are set at bring-up.
+  node_id:
+    value: send 0x06, receive 0x16
+    unit: null
+    source: openarm docs @e15e09e website/docs/setup/openarm-setup/1-motor-id.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+    note: Same IDs on both arms; the arms are separated by bus.
+  bitrate:
+    value: 1000000
+    unit: bit/s
+    source: openarm docs @e15e09e 2-can-setup.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+    note: 'CAN FD: arbitration 1 Mbit/s, data 5 Mbit/s, BRS on every frame.'
+  control_mode:
+    value: MIT (position, velocity, feed-forward torque with kp, kd)
+    unit: null
+    source: openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+  gear_ratio:
+    value: 10.0
+    unit: '1'
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+  rated_torque:
+    value: 3.0
+    unit: N*m
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Output side.
+  peak_torque:
+    value: 7.0
+    unit: N*m
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: URDF effort limit is 7 N*m (openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml).
+      Rated is 3 N*m; sustained loads above it overheat the wrist.
+  rated_speed:
+    value: 12.5664
+    unit: rad/s
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx (120 rpm at 24 V)
+    status: datasheet
+    owner: Om with Adnan
+  max_speed:
+    value: 20.944
+    unit: rad/s
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx (200 rpm no-load at 24 V)
+    status: datasheet
+    owner: Om with Adnan
+    note: URDF velocity limit is 20.944 rad/s (openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml).
+  rated_current:
+    value: 2.5
+    unit: A
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Motor phase current, not bus current.
+  peak_current:
+    value: 7.5
+    unit: A
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Motor phase current, not bus current.
+  rated_voltage:
+    value: 24.0
+    unit: V
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+  supply_bus_voltage_nominal:
+    value: 25.6
+    unit: V
+    source: E-01 rev1.8 (arms on the raw SAFE bus, 25.6 V nominal, up to 29.2 V; gate ARM-VOLT open)
+    status: decision
+    owner: Evans
+  supply_bus_voltage_max:
+    value: 29.2
+    unit: V
+    source: E-01 rev1.8 (arms on the raw SAFE bus, 25.6 V nominal, up to 29.2 V; gate ARM-VOLT open)
+    status: decision
+    owner: Evans
+    note: Above the 24 V motor rating; confirming the supplier limit is gate ARM-VOLT (Om / Alex).
+  brake_present:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: OpenArm safety guide reports high backdrivability and rapid load fall on power loss; it does not specify whether a separate brake is fitted.
+  brake_holding_torque:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_release_time:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_engage_time:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_coil_voltage:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  rotor_inertia:
+    value: null
+    unit: kg*m^2
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'TODO(Om): DAMIAO datasheet rotor inertia (not in the OpenArm docs).'
+  joint_damping:
+    value: null
+    unit: N*m*s/rad
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'No upstream value: no <dynamics> and openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/friction.yaml
+      (empty). Identification test needed.'
+  joint_friction:
+    value: null
+    unit: N*m
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'No upstream value: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/friction.yaml
+      (empty). Identification test needed.'
+  heartbeat_period:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Om with Adnan
+    note: MIT protocol has no heartbeat; each command gets a reply.
+  comm_timeout:
+    value: null
+    unit: s
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'TODO(Om): DAMIAO comm-loss protection time is a motor register; value not in any input.'
+  extra:
+    joint_lower_limit:
+      value: -0.7854
+      unit: rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    joint_upper_limit:
+      value: 0.7854
+      unit: rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    urdf_effort_limit:
+      value: 7.0
+      unit: N*m
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    urdf_velocity_limit:
+      value: 20.944
+      unit: rad/s
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    mit_p_max:
+      value: 12.5
+      unit: rad
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_v_max:
+      value: 30.0
+      unit: rad/s
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_t_max:
+      value: 10.0
+      unit: N*m
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_kp:
+      value: 10.0
+      unit: N*m/rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/control_gains.yaml
+      status: upstream_config
+      owner: Om with Adnan
+    mit_kd:
+      value: 0.6
+      unit: N*m*s/rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/control_gains.yaml
+      status: upstream_config
+      owner: Om with Adnan
+    motor_mass:
+      value: 0.3
+      unit: kg
+      source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+      status: datasheet
+      owner: Om with Adnan
+- id: openarm_left_joint7
+  kind: joint_motor
+  description: OpenArm v2.0 left arm joint 7 motor
+  urdf_joint: openarm_left_joint7
+  part:
+    value: DAMIAO DM-J4310-2EC V1.1
+    unit: null
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: datasheet
+    owner: Om with Adnan
+  revision:
+    value: OpenArm v2.0 kit, upstream pin openarm_description @14ff67b
+    unit: null
+    source: config/upstream_pins.yaml
+    status: decision
+    owner: Om with Adnan
+    note: Delivered kit revision not yet recorded.
+  bus:
+    value: can1
+    unit: null
+    source: openarm docs @e15e09e website/docs/setup/openarm-setup/1-motor-id.mdx; openarm_description @14ff67b
+      assets/robot/openarm_v2.0/urdf/ros2_control/openarm.bimanual.ros2_control.xacro
+    status: upstream_config
+    owner: Om with Adnan
+    note: Upstream default naming (right arm can0, left arm can1); the robot's SocketCAN names are set at bring-up.
+  node_id:
+    value: send 0x07, receive 0x17
+    unit: null
+    source: openarm docs @e15e09e website/docs/setup/openarm-setup/1-motor-id.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+    note: Same IDs on both arms; the arms are separated by bus.
+  bitrate:
+    value: 1000000
+    unit: bit/s
+    source: openarm docs @e15e09e 2-can-setup.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+    note: 'CAN FD: arbitration 1 Mbit/s, data 5 Mbit/s, BRS on every frame.'
+  control_mode:
+    value: MIT (position, velocity, feed-forward torque with kp, kd)
+    unit: null
+    source: openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+  gear_ratio:
+    value: 10.0
+    unit: '1'
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+  rated_torque:
+    value: 3.0
+    unit: N*m
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Output side.
+  peak_torque:
+    value: 7.0
+    unit: N*m
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: URDF effort limit is 7 N*m (openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml).
+      Rated is 3 N*m; sustained loads above it overheat the wrist.
+  rated_speed:
+    value: 12.5664
+    unit: rad/s
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx (120 rpm at 24 V)
+    status: datasheet
+    owner: Om with Adnan
+  max_speed:
+    value: 20.944
+    unit: rad/s
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx (200 rpm no-load at 24 V)
+    status: datasheet
+    owner: Om with Adnan
+    note: URDF velocity limit is 20.944 rad/s (openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml).
+  rated_current:
+    value: 2.5
+    unit: A
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Motor phase current, not bus current.
+  peak_current:
+    value: 7.5
+    unit: A
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Motor phase current, not bus current.
+  rated_voltage:
+    value: 24.0
+    unit: V
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+  supply_bus_voltage_nominal:
+    value: 25.6
+    unit: V
+    source: E-01 rev1.8 (arms on the raw SAFE bus, 25.6 V nominal, up to 29.2 V; gate ARM-VOLT open)
+    status: decision
+    owner: Evans
+  supply_bus_voltage_max:
+    value: 29.2
+    unit: V
+    source: E-01 rev1.8 (arms on the raw SAFE bus, 25.6 V nominal, up to 29.2 V; gate ARM-VOLT open)
+    status: decision
+    owner: Evans
+    note: Above the 24 V motor rating; confirming the supplier limit is gate ARM-VOLT (Om / Alex).
+  brake_present:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: OpenArm safety guide reports high backdrivability and rapid load fall on power loss; it does not specify whether a separate brake is fitted.
+  brake_holding_torque:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_release_time:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_engage_time:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_coil_voltage:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  rotor_inertia:
+    value: null
+    unit: kg*m^2
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'TODO(Om): DAMIAO datasheet rotor inertia (not in the OpenArm docs).'
+  joint_damping:
+    value: null
+    unit: N*m*s/rad
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'No upstream value: no <dynamics> and openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/friction.yaml
+      (empty). Identification test needed.'
+  joint_friction:
+    value: null
+    unit: N*m
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'No upstream value: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/friction.yaml
+      (empty). Identification test needed.'
+  heartbeat_period:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Om with Adnan
+    note: MIT protocol has no heartbeat; each command gets a reply.
+  comm_timeout:
+    value: null
+    unit: s
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'TODO(Om): DAMIAO comm-loss protection time is a motor register; value not in any input.'
+  extra:
+    joint_lower_limit:
+      value: -1.5708
+      unit: rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    joint_upper_limit:
+      value: 1.5708
+      unit: rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    urdf_effort_limit:
+      value: 7.0
+      unit: N*m
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    urdf_velocity_limit:
+      value: 20.944
+      unit: rad/s
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    mit_p_max:
+      value: 12.5
+      unit: rad
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_v_max:
+      value: 30.0
+      unit: rad/s
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_t_max:
+      value: 10.0
+      unit: N*m
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_kp:
+      value: 10.0
+      unit: N*m/rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/control_gains.yaml
+      status: upstream_config
+      owner: Om with Adnan
+    mit_kd:
+      value: 0.5
+      unit: N*m*s/rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/control_gains.yaml
+      status: upstream_config
+      owner: Om with Adnan
+    motor_mass:
+      value: 0.3
+      unit: kg
+      source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+      status: datasheet
+      owner: Om with Adnan
+- id: openarm_left_finger_joint1
+  kind: gripper_motor
+  description: OpenArm v2.0 left pinch gripper motor (motor ID 8)
+  urdf_joint: openarm_left_finger_joint1
+  part:
+    value: DAMIAO DM-J4310-2EC V1.1
+    unit: null
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: datasheet
+    owner: Om with Adnan
+  revision:
+    value: OpenArm v2.0 kit, upstream pin openarm_description @14ff67b
+    unit: null
+    source: config/upstream_pins.yaml
+    status: decision
+    owner: Om with Adnan
+    note: Delivered kit revision not yet recorded.
+  bus:
+    value: can1
+    unit: null
+    source: openarm docs @e15e09e website/docs/setup/openarm-setup/1-motor-id.mdx; openarm_description @14ff67b
+      assets/robot/openarm_v2.0/urdf/ros2_control/openarm.bimanual.ros2_control.xacro
+    status: upstream_config
+    owner: Om with Adnan
+    note: Upstream default naming (right arm can0, left arm can1); the robot's SocketCAN names are set at bring-up.
+  node_id:
+    value: send 0x08, receive 0x18
+    unit: null
+    source: openarm docs @e15e09e website/docs/setup/openarm-setup/1-motor-id.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+    note: Same IDs on both arms; the arms are separated by bus.
+  bitrate:
+    value: 1000000
+    unit: bit/s
+    source: openarm docs @e15e09e 2-can-setup.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+    note: 'CAN FD: arbitration 1 Mbit/s, data 5 Mbit/s, BRS on every frame.'
+  control_mode:
+    value: MIT (position, velocity, feed-forward torque with kp, kd)
+    unit: null
+    source: openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+  gear_ratio:
+    value: 10.0
+    unit: '1'
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+  rated_torque:
+    value: 3.0
+    unit: N*m
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Output side.
+  peak_torque:
+    value: 7.0
+    unit: N*m
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: URDF effort limit is 7 N*m (openarm_description @14ff67b assets/end_effector/pinch_gripper/config/joint/joint_limits.yaml).
+  rated_speed:
+    value: 12.5664
+    unit: rad/s
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx (120 rpm at 24 V)
+    status: datasheet
+    owner: Om with Adnan
+  max_speed:
+    value: 20.944
+    unit: rad/s
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx (200 rpm no-load at 24 V)
+    status: datasheet
+    owner: Om with Adnan
+    note: URDF velocity limit is 5.0 rad/s (openarm_description @14ff67b assets/end_effector/pinch_gripper/config/joint/joint_limits.yaml).
+  rated_current:
+    value: 2.5
+    unit: A
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Motor phase current, not bus current.
+  peak_current:
+    value: 7.5
+    unit: A
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Motor phase current, not bus current.
+  rated_voltage:
+    value: 24.0
+    unit: V
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+  supply_bus_voltage_nominal:
+    value: 25.6
+    unit: V
+    source: E-01 rev1.8 (arms on the raw SAFE bus, 25.6 V nominal, up to 29.2 V; gate ARM-VOLT open)
+    status: decision
+    owner: Evans
+  supply_bus_voltage_max:
+    value: 29.2
+    unit: V
+    source: E-01 rev1.8 (arms on the raw SAFE bus, 25.6 V nominal, up to 29.2 V; gate ARM-VOLT open)
+    status: decision
+    owner: Evans
+    note: Above the 24 V motor rating; confirming the supplier limit is gate ARM-VOLT (Om / Alex).
+  brake_present:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: OpenArm safety guide reports high backdrivability and rapid load fall on power loss; it does not specify whether a separate brake is fitted.
+  brake_holding_torque:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_release_time:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_engage_time:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_coil_voltage:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  rotor_inertia:
+    value: null
+    unit: kg*m^2
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'TODO(Om): DAMIAO datasheet rotor inertia (not in the OpenArm docs).'
+  joint_damping:
+    value: null
+    unit: N*m*s/rad
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'No upstream value: no <dynamics> and openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/friction.yaml
+      (empty). Identification test needed.'
+  joint_friction:
+    value: null
+    unit: N*m
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'No upstream value: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/friction.yaml
+      (empty). Identification test needed.'
+  heartbeat_period:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Om with Adnan
+    note: MIT protocol has no heartbeat; each command gets a reply.
+  comm_timeout:
+    value: null
+    unit: s
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'TODO(Om): DAMIAO comm-loss protection time is a motor register; value not in any input.'
+  extra:
+    joint_lower_limit:
+      value: 0.0
+      unit: rad
+      source: openarm_description @14ff67b assets/end_effector/pinch_gripper/config/joint/joint_limits.yaml (left
+        preset reflect)
+      status: upstream_urdf
+      owner: Om with Adnan
+    joint_upper_limit:
+      value: 0.7854
+      unit: rad
+      source: openarm_description @14ff67b assets/end_effector/pinch_gripper/config/joint/joint_limits.yaml (left
+        preset reflect)
+      status: upstream_urdf
+      owner: Om with Adnan
+    urdf_effort_limit:
+      value: 7.0
+      unit: N*m
+      source: openarm_description @14ff67b assets/end_effector/pinch_gripper/config/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    urdf_velocity_limit:
+      value: 5.0
+      unit: rad/s
+      source: openarm_description @14ff67b assets/end_effector/pinch_gripper/config/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    mit_p_max:
+      value: 12.5
+      unit: rad
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_v_max:
+      value: 30.0
+      unit: rad/s
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_t_max:
+      value: 10.0
+      unit: N*m
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_kp:
+      value: 5.0
+      unit: N*m/rad
+      source: openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp (GRIPPER_KP)
+      status: upstream_config
+      owner: Om with Adnan
+    mit_kd:
+      value: 0.1
+      unit: N*m*s/rad
+      source: openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp (GRIPPER_KD)
+      status: upstream_config
+      owner: Om with Adnan
+    motor_mass:
+      value: 0.3
+      unit: kg
+      source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+      status: datasheet
+      owner: Om with Adnan
+    force_limit:
+      value: null
+      unit: N
+      source: null
+      status: unknown
+      owner: Om with Adnan
+      note: No gripper force or current limit in openarm_ros2 @4e837e1 (MIT kp 5, kd 0.1, tau 0).
+    controller_update_rate:
+      value: 750.0
+      unit: Hz
+      source: openarm_ros2 @4e837e1 bringup controllers config
+      status: upstream_config
+      owner: Om with Adnan
+- id: openarm_right_joint1
+  kind: joint_motor
+  description: OpenArm v2.0 right arm joint 1 motor
+  urdf_joint: openarm_right_joint1
+  part:
+    value: DAMIAO DM-J8009P-2EC
+    unit: null
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: datasheet
+    owner: Om with Adnan
+  revision:
+    value: OpenArm v2.0 kit, upstream pin openarm_description @14ff67b
+    unit: null
+    source: config/upstream_pins.yaml
+    status: decision
+    owner: Om with Adnan
+    note: Delivered kit revision not yet recorded.
+  bus:
+    value: can0
+    unit: null
+    source: openarm docs @e15e09e website/docs/setup/openarm-setup/1-motor-id.mdx; openarm_description @14ff67b
+      assets/robot/openarm_v2.0/urdf/ros2_control/openarm.bimanual.ros2_control.xacro
+    status: upstream_config
+    owner: Om with Adnan
+    note: Upstream default naming (right arm can0, left arm can1); the robot's SocketCAN names are set at bring-up.
+  node_id:
+    value: send 0x01, receive 0x11
+    unit: null
+    source: openarm docs @e15e09e website/docs/setup/openarm-setup/1-motor-id.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+    note: Same IDs on both arms; the arms are separated by bus.
+  bitrate:
+    value: 1000000
+    unit: bit/s
+    source: openarm docs @e15e09e 2-can-setup.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+    note: 'CAN FD: arbitration 1 Mbit/s, data 5 Mbit/s, BRS on every frame.'
+  control_mode:
+    value: MIT (position, velocity, feed-forward torque with kp, kd)
+    unit: null
+    source: openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+  gear_ratio:
+    value: 9.0
+    unit: '1'
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+  rated_torque:
+    value: 20.0
+    unit: N*m
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Output side.
+  peak_torque:
+    value: 40.0
+    unit: N*m
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: URDF effort limit is 40 N*m (openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml).
+  rated_speed:
+    value: 10.472
+    unit: rad/s
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx (100 rpm at 24 V)
+    status: datasheet
+    owner: Om with Adnan
+  max_speed:
+    value: 16.7552
+    unit: rad/s
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx (160 rpm no-load at 24 V)
+    status: datasheet
+    owner: Om with Adnan
+    note: URDF velocity limit is 16.755 rad/s (openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml).
+  rated_current:
+    value: 20.0
+    unit: A
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Motor phase current, not bus current.
+  peak_current:
+    value: 50.0
+    unit: A
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Motor phase current, not bus current.
+  rated_voltage:
+    value: 24.0
+    unit: V
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: DM-J8009P supports 24 to 48 V.
+  supply_bus_voltage_nominal:
+    value: 25.6
+    unit: V
+    source: E-01 rev1.8 (arms on the raw SAFE bus, 25.6 V nominal, up to 29.2 V; gate ARM-VOLT open)
+    status: decision
+    owner: Evans
+  supply_bus_voltage_max:
+    value: 29.2
+    unit: V
+    source: E-01 rev1.8 (arms on the raw SAFE bus, 25.6 V nominal, up to 29.2 V; gate ARM-VOLT open)
+    status: decision
+    owner: Evans
+    note: Above the 24 V motor rating; confirming the supplier limit is gate ARM-VOLT (Om / Alex).
+  brake_present:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: OpenArm safety guide reports high backdrivability and rapid load fall on power loss; it does not specify whether a separate brake is fitted.
+  brake_holding_torque:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_release_time:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_engage_time:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_coil_voltage:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  rotor_inertia:
+    value: null
+    unit: kg*m^2
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'TODO(Om): DAMIAO datasheet rotor inertia (not in the OpenArm docs).'
+  joint_damping:
+    value: null
+    unit: N*m*s/rad
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'No upstream value: no <dynamics> and openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/friction.yaml
+      (empty). Identification test needed.'
+  joint_friction:
+    value: null
+    unit: N*m
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'No upstream value: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/friction.yaml
+      (empty). Identification test needed.'
+  heartbeat_period:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Om with Adnan
+    note: MIT protocol has no heartbeat; each command gets a reply.
+  comm_timeout:
+    value: null
+    unit: s
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'TODO(Om): DAMIAO comm-loss protection time is a motor register; value not in any input.'
+  extra:
+    joint_lower_limit:
+      value: -1.3963
+      unit: rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    joint_upper_limit:
+      value: 3.4907
+      unit: rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    urdf_effort_limit:
+      value: 40.0
+      unit: N*m
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    urdf_velocity_limit:
+      value: 16.755
+      unit: rad/s
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    mit_p_max:
+      value: 12.5
+      unit: rad
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_v_max:
+      value: 45.0
+      unit: rad/s
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_t_max:
+      value: 54.0
+      unit: N*m
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_kp:
+      value: 70.0
+      unit: N*m/rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/control_gains.yaml
+      status: upstream_config
+      owner: Om with Adnan
+    mit_kd:
+      value: 2.75
+      unit: N*m*s/rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/control_gains.yaml
+      status: upstream_config
+      owner: Om with Adnan
+    motor_mass:
+      value: 0.896
+      unit: kg
+      source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+      status: datasheet
+      owner: Om with Adnan
+- id: openarm_right_joint2
+  kind: joint_motor
+  description: OpenArm v2.0 right arm joint 2 motor
+  urdf_joint: openarm_right_joint2
+  part:
+    value: DAMIAO DM-J8009P-2EC
+    unit: null
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: datasheet
+    owner: Om with Adnan
+  revision:
+    value: OpenArm v2.0 kit, upstream pin openarm_description @14ff67b
+    unit: null
+    source: config/upstream_pins.yaml
+    status: decision
+    owner: Om with Adnan
+    note: Delivered kit revision not yet recorded.
+  bus:
+    value: can0
+    unit: null
+    source: openarm docs @e15e09e website/docs/setup/openarm-setup/1-motor-id.mdx; openarm_description @14ff67b
+      assets/robot/openarm_v2.0/urdf/ros2_control/openarm.bimanual.ros2_control.xacro
+    status: upstream_config
+    owner: Om with Adnan
+    note: Upstream default naming (right arm can0, left arm can1); the robot's SocketCAN names are set at bring-up.
+  node_id:
+    value: send 0x02, receive 0x12
+    unit: null
+    source: openarm docs @e15e09e website/docs/setup/openarm-setup/1-motor-id.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+    note: Same IDs on both arms; the arms are separated by bus.
+  bitrate:
+    value: 1000000
+    unit: bit/s
+    source: openarm docs @e15e09e 2-can-setup.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+    note: 'CAN FD: arbitration 1 Mbit/s, data 5 Mbit/s, BRS on every frame.'
+  control_mode:
+    value: MIT (position, velocity, feed-forward torque with kp, kd)
+    unit: null
+    source: openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+  gear_ratio:
+    value: 9.0
+    unit: '1'
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+  rated_torque:
+    value: 20.0
+    unit: N*m
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Output side.
+  peak_torque:
+    value: 40.0
+    unit: N*m
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: URDF effort limit is 40 N*m (openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml).
+  rated_speed:
+    value: 10.472
+    unit: rad/s
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx (100 rpm at 24 V)
+    status: datasheet
+    owner: Om with Adnan
+  max_speed:
+    value: 16.7552
+    unit: rad/s
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx (160 rpm no-load at 24 V)
+    status: datasheet
+    owner: Om with Adnan
+    note: URDF velocity limit is 16.755 rad/s (openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml).
+  rated_current:
+    value: 20.0
+    unit: A
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Motor phase current, not bus current.
+  peak_current:
+    value: 50.0
+    unit: A
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Motor phase current, not bus current.
+  rated_voltage:
+    value: 24.0
+    unit: V
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: DM-J8009P supports 24 to 48 V.
+  supply_bus_voltage_nominal:
+    value: 25.6
+    unit: V
+    source: E-01 rev1.8 (arms on the raw SAFE bus, 25.6 V nominal, up to 29.2 V; gate ARM-VOLT open)
+    status: decision
+    owner: Evans
+  supply_bus_voltage_max:
+    value: 29.2
+    unit: V
+    source: E-01 rev1.8 (arms on the raw SAFE bus, 25.6 V nominal, up to 29.2 V; gate ARM-VOLT open)
+    status: decision
+    owner: Evans
+    note: Above the 24 V motor rating; confirming the supplier limit is gate ARM-VOLT (Om / Alex).
+  brake_present:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: OpenArm safety guide reports high backdrivability and rapid load fall on power loss; it does not specify whether a separate brake is fitted.
+  brake_holding_torque:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_release_time:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_engage_time:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_coil_voltage:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  rotor_inertia:
+    value: null
+    unit: kg*m^2
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'TODO(Om): DAMIAO datasheet rotor inertia (not in the OpenArm docs).'
+  joint_damping:
+    value: null
+    unit: N*m*s/rad
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'No upstream value: no <dynamics> and openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/friction.yaml
+      (empty). Identification test needed.'
+  joint_friction:
+    value: null
+    unit: N*m
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'No upstream value: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/friction.yaml
+      (empty). Identification test needed.'
+  heartbeat_period:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Om with Adnan
+    note: MIT protocol has no heartbeat; each command gets a reply.
+  comm_timeout:
+    value: null
+    unit: s
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'TODO(Om): DAMIAO comm-loss protection time is a motor register; value not in any input.'
+  extra:
+    joint_lower_limit:
+      value: -0.17453
+      unit: rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    joint_upper_limit:
+      value: 3.3161
+      unit: rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    urdf_effort_limit:
+      value: 40.0
+      unit: N*m
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    urdf_velocity_limit:
+      value: 16.755
+      unit: rad/s
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    mit_p_max:
+      value: 12.5
+      unit: rad
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_v_max:
+      value: 45.0
+      unit: rad/s
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_t_max:
+      value: 54.0
+      unit: N*m
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_kp:
+      value: 70.0
+      unit: N*m/rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/control_gains.yaml
+      status: upstream_config
+      owner: Om with Adnan
+    mit_kd:
+      value: 2.5
+      unit: N*m*s/rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/control_gains.yaml
+      status: upstream_config
+      owner: Om with Adnan
+    motor_mass:
+      value: 0.896
+      unit: kg
+      source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+      status: datasheet
+      owner: Om with Adnan
+- id: openarm_right_joint3
+  kind: joint_motor
+  description: OpenArm v2.0 right arm joint 3 motor
+  urdf_joint: openarm_right_joint3
+  part:
+    value: DAMIAO DM4340 series (DM-J4340P-2EC)
+    unit: null
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: datasheet
+    owner: Om with Adnan
+  revision:
+    value: OpenArm v2.0 kit, upstream pin openarm_description @14ff67b
+    unit: null
+    source: config/upstream_pins.yaml
+    status: decision
+    owner: Om with Adnan
+    note: Delivered kit revision not yet recorded.
+  bus:
+    value: can0
+    unit: null
+    source: openarm docs @e15e09e website/docs/setup/openarm-setup/1-motor-id.mdx; openarm_description @14ff67b
+      assets/robot/openarm_v2.0/urdf/ros2_control/openarm.bimanual.ros2_control.xacro
+    status: upstream_config
+    owner: Om with Adnan
+    note: Upstream default naming (right arm can0, left arm can1); the robot's SocketCAN names are set at bring-up.
+  node_id:
+    value: send 0x03, receive 0x13
+    unit: null
+    source: openarm docs @e15e09e website/docs/setup/openarm-setup/1-motor-id.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+    note: Same IDs on both arms; the arms are separated by bus.
+  bitrate:
+    value: 1000000
+    unit: bit/s
+    source: openarm docs @e15e09e 2-can-setup.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+    note: 'CAN FD: arbitration 1 Mbit/s, data 5 Mbit/s, BRS on every frame.'
+  control_mode:
+    value: MIT (position, velocity, feed-forward torque with kp, kd)
+    unit: null
+    source: openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+  gear_ratio:
+    value: 40.0
+    unit: '1'
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+  rated_torque:
+    value: 9.0
+    unit: N*m
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Output side.
+  peak_torque:
+    value: 27.0
+    unit: N*m
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: URDF effort limit is 27 N*m (openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml).
+  rated_speed:
+    value: 3.7699
+    unit: rad/s
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx (36 rpm at 24 V)
+    status: datasheet
+    owner: Om with Adnan
+  max_speed:
+    value: 5.4454
+    unit: rad/s
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx (52 rpm no-load at 24 V)
+    status: datasheet
+    owner: Om with Adnan
+    note: URDF velocity limit is 5.4454 rad/s (openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml).
+  rated_current:
+    value: 2.5
+    unit: A
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Motor phase current, not bus current.
+  peak_current:
+    value: 8.0
+    unit: A
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Motor phase current, not bus current.
+  rated_voltage:
+    value: 24.0
+    unit: V
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+  supply_bus_voltage_nominal:
+    value: 25.6
+    unit: V
+    source: E-01 rev1.8 (arms on the raw SAFE bus, 25.6 V nominal, up to 29.2 V; gate ARM-VOLT open)
+    status: decision
+    owner: Evans
+  supply_bus_voltage_max:
+    value: 29.2
+    unit: V
+    source: E-01 rev1.8 (arms on the raw SAFE bus, 25.6 V nominal, up to 29.2 V; gate ARM-VOLT open)
+    status: decision
+    owner: Evans
+    note: Above the 24 V motor rating; confirming the supplier limit is gate ARM-VOLT (Om / Alex).
+  brake_present:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: OpenArm safety guide reports high backdrivability and rapid load fall on power loss; it does not specify whether a separate brake is fitted.
+  brake_holding_torque:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_release_time:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_engage_time:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_coil_voltage:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  rotor_inertia:
+    value: null
+    unit: kg*m^2
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'TODO(Om): DAMIAO datasheet rotor inertia (not in the OpenArm docs).'
+  joint_damping:
+    value: null
+    unit: N*m*s/rad
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'No upstream value: no <dynamics> and openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/friction.yaml
+      (empty). Identification test needed.'
+  joint_friction:
+    value: null
+    unit: N*m
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'No upstream value: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/friction.yaml
+      (empty). Identification test needed.'
+  heartbeat_period:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Om with Adnan
+    note: MIT protocol has no heartbeat; each command gets a reply.
+  comm_timeout:
+    value: null
+    unit: s
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'TODO(Om): DAMIAO comm-loss protection time is a motor register; value not in any input.'
+  extra:
+    joint_lower_limit:
+      value: -1.5708
+      unit: rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    joint_upper_limit:
+      value: 1.5708
+      unit: rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    urdf_effort_limit:
+      value: 27.0
+      unit: N*m
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    urdf_velocity_limit:
+      value: 5.4454
+      unit: rad/s
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    mit_p_max:
+      value: 12.5
+      unit: rad
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_v_max:
+      value: 10.0
+      unit: rad/s
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_t_max:
+      value: 28.0
+      unit: N*m
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_kp:
+      value: 70.0
+      unit: N*m/rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/control_gains.yaml
+      status: upstream_config
+      owner: Om with Adnan
+    mit_kd:
+      value: 2.0
+      unit: N*m*s/rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/control_gains.yaml
+      status: upstream_config
+      owner: Om with Adnan
+    motor_mass:
+      value: 0.362
+      unit: kg
+      source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+      status: datasheet
+      owner: Om with Adnan
+- id: openarm_right_joint4
+  kind: joint_motor
+  description: OpenArm v2.0 right arm joint 4 motor
+  urdf_joint: openarm_right_joint4
+  part:
+    value: DAMIAO DM4340 series (DM-J4340P-2EC)
+    unit: null
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: datasheet
+    owner: Om with Adnan
+  revision:
+    value: OpenArm v2.0 kit, upstream pin openarm_description @14ff67b
+    unit: null
+    source: config/upstream_pins.yaml
+    status: decision
+    owner: Om with Adnan
+    note: Delivered kit revision not yet recorded.
+  bus:
+    value: can0
+    unit: null
+    source: openarm docs @e15e09e website/docs/setup/openarm-setup/1-motor-id.mdx; openarm_description @14ff67b
+      assets/robot/openarm_v2.0/urdf/ros2_control/openarm.bimanual.ros2_control.xacro
+    status: upstream_config
+    owner: Om with Adnan
+    note: Upstream default naming (right arm can0, left arm can1); the robot's SocketCAN names are set at bring-up.
+  node_id:
+    value: send 0x04, receive 0x14
+    unit: null
+    source: openarm docs @e15e09e website/docs/setup/openarm-setup/1-motor-id.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+    note: Same IDs on both arms; the arms are separated by bus.
+  bitrate:
+    value: 1000000
+    unit: bit/s
+    source: openarm docs @e15e09e 2-can-setup.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+    note: 'CAN FD: arbitration 1 Mbit/s, data 5 Mbit/s, BRS on every frame.'
+  control_mode:
+    value: MIT (position, velocity, feed-forward torque with kp, kd)
+    unit: null
+    source: openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+  gear_ratio:
+    value: 40.0
+    unit: '1'
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+  rated_torque:
+    value: 9.0
+    unit: N*m
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Output side.
+  peak_torque:
+    value: 27.0
+    unit: N*m
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: URDF effort limit is 27 N*m (openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml).
+  rated_speed:
+    value: 3.7699
+    unit: rad/s
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx (36 rpm at 24 V)
+    status: datasheet
+    owner: Om with Adnan
+  max_speed:
+    value: 5.4454
+    unit: rad/s
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx (52 rpm no-load at 24 V)
+    status: datasheet
+    owner: Om with Adnan
+    note: URDF velocity limit is 5.4454 rad/s (openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml).
+  rated_current:
+    value: 2.5
+    unit: A
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Motor phase current, not bus current.
+  peak_current:
+    value: 8.0
+    unit: A
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Motor phase current, not bus current.
+  rated_voltage:
+    value: 24.0
+    unit: V
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+  supply_bus_voltage_nominal:
+    value: 25.6
+    unit: V
+    source: E-01 rev1.8 (arms on the raw SAFE bus, 25.6 V nominal, up to 29.2 V; gate ARM-VOLT open)
+    status: decision
+    owner: Evans
+  supply_bus_voltage_max:
+    value: 29.2
+    unit: V
+    source: E-01 rev1.8 (arms on the raw SAFE bus, 25.6 V nominal, up to 29.2 V; gate ARM-VOLT open)
+    status: decision
+    owner: Evans
+    note: Above the 24 V motor rating; confirming the supplier limit is gate ARM-VOLT (Om / Alex).
+  brake_present:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: OpenArm safety guide reports high backdrivability and rapid load fall on power loss; it does not specify whether a separate brake is fitted.
+  brake_holding_torque:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_release_time:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_engage_time:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_coil_voltage:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  rotor_inertia:
+    value: null
+    unit: kg*m^2
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'TODO(Om): DAMIAO datasheet rotor inertia (not in the OpenArm docs).'
+  joint_damping:
+    value: null
+    unit: N*m*s/rad
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'No upstream value: no <dynamics> and openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/friction.yaml
+      (empty). Identification test needed.'
+  joint_friction:
+    value: null
+    unit: N*m
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'No upstream value: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/friction.yaml
+      (empty). Identification test needed.'
+  heartbeat_period:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Om with Adnan
+    note: MIT protocol has no heartbeat; each command gets a reply.
+  comm_timeout:
+    value: null
+    unit: s
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'TODO(Om): DAMIAO comm-loss protection time is a motor register; value not in any input.'
+  extra:
+    joint_lower_limit:
+      value: 0.0
+      unit: rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    joint_upper_limit:
+      value: 2.4435
+      unit: rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    urdf_effort_limit:
+      value: 27.0
+      unit: N*m
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    urdf_velocity_limit:
+      value: 5.4454
+      unit: rad/s
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    mit_p_max:
+      value: 12.5
+      unit: rad
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_v_max:
+      value: 10.0
+      unit: rad/s
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_t_max:
+      value: 28.0
+      unit: N*m
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_kp:
+      value: 60.0
+      unit: N*m/rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/control_gains.yaml
+      status: upstream_config
+      owner: Om with Adnan
+    mit_kd:
+      value: 2.0
+      unit: N*m*s/rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/control_gains.yaml
+      status: upstream_config
+      owner: Om with Adnan
+    motor_mass:
+      value: 0.362
+      unit: kg
+      source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+      status: datasheet
+      owner: Om with Adnan
+- id: openarm_right_joint5
+  kind: joint_motor
+  description: OpenArm v2.0 right arm joint 5 motor
+  urdf_joint: openarm_right_joint5
+  part:
+    value: DAMIAO DM-J4310-2EC V1.1
+    unit: null
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: datasheet
+    owner: Om with Adnan
+  revision:
+    value: OpenArm v2.0 kit, upstream pin openarm_description @14ff67b
+    unit: null
+    source: config/upstream_pins.yaml
+    status: decision
+    owner: Om with Adnan
+    note: Delivered kit revision not yet recorded.
+  bus:
+    value: can0
+    unit: null
+    source: openarm docs @e15e09e website/docs/setup/openarm-setup/1-motor-id.mdx; openarm_description @14ff67b
+      assets/robot/openarm_v2.0/urdf/ros2_control/openarm.bimanual.ros2_control.xacro
+    status: upstream_config
+    owner: Om with Adnan
+    note: Upstream default naming (right arm can0, left arm can1); the robot's SocketCAN names are set at bring-up.
+  node_id:
+    value: send 0x05, receive 0x15
+    unit: null
+    source: openarm docs @e15e09e website/docs/setup/openarm-setup/1-motor-id.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+    note: Same IDs on both arms; the arms are separated by bus.
+  bitrate:
+    value: 1000000
+    unit: bit/s
+    source: openarm docs @e15e09e 2-can-setup.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+    note: 'CAN FD: arbitration 1 Mbit/s, data 5 Mbit/s, BRS on every frame.'
+  control_mode:
+    value: MIT (position, velocity, feed-forward torque with kp, kd)
+    unit: null
+    source: openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+  gear_ratio:
+    value: 10.0
+    unit: '1'
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+  rated_torque:
+    value: 3.0
+    unit: N*m
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Output side.
+  peak_torque:
+    value: 7.0
+    unit: N*m
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: URDF effort limit is 7 N*m (openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml).
+      Rated is 3 N*m; sustained loads above it overheat the wrist.
+  rated_speed:
+    value: 12.5664
+    unit: rad/s
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx (120 rpm at 24 V)
+    status: datasheet
+    owner: Om with Adnan
+  max_speed:
+    value: 20.944
+    unit: rad/s
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx (200 rpm no-load at 24 V)
+    status: datasheet
+    owner: Om with Adnan
+    note: URDF velocity limit is 20.944 rad/s (openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml).
+  rated_current:
+    value: 2.5
+    unit: A
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Motor phase current, not bus current.
+  peak_current:
+    value: 7.5
+    unit: A
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Motor phase current, not bus current.
+  rated_voltage:
+    value: 24.0
+    unit: V
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+  supply_bus_voltage_nominal:
+    value: 25.6
+    unit: V
+    source: E-01 rev1.8 (arms on the raw SAFE bus, 25.6 V nominal, up to 29.2 V; gate ARM-VOLT open)
+    status: decision
+    owner: Evans
+  supply_bus_voltage_max:
+    value: 29.2
+    unit: V
+    source: E-01 rev1.8 (arms on the raw SAFE bus, 25.6 V nominal, up to 29.2 V; gate ARM-VOLT open)
+    status: decision
+    owner: Evans
+    note: Above the 24 V motor rating; confirming the supplier limit is gate ARM-VOLT (Om / Alex).
+  brake_present:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: OpenArm safety guide reports high backdrivability and rapid load fall on power loss; it does not specify whether a separate brake is fitted.
+  brake_holding_torque:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_release_time:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_engage_time:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_coil_voltage:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  rotor_inertia:
+    value: null
+    unit: kg*m^2
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'TODO(Om): DAMIAO datasheet rotor inertia (not in the OpenArm docs).'
+  joint_damping:
+    value: null
+    unit: N*m*s/rad
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'No upstream value: no <dynamics> and openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/friction.yaml
+      (empty). Identification test needed.'
+  joint_friction:
+    value: null
+    unit: N*m
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'No upstream value: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/friction.yaml
+      (empty). Identification test needed.'
+  heartbeat_period:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Om with Adnan
+    note: MIT protocol has no heartbeat; each command gets a reply.
+  comm_timeout:
+    value: null
+    unit: s
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'TODO(Om): DAMIAO comm-loss protection time is a motor register; value not in any input.'
+  extra:
+    joint_lower_limit:
+      value: -1.5708
+      unit: rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    joint_upper_limit:
+      value: 1.5708
+      unit: rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    urdf_effort_limit:
+      value: 7.0
+      unit: N*m
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    urdf_velocity_limit:
+      value: 20.944
+      unit: rad/s
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    mit_p_max:
+      value: 12.5
+      unit: rad
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_v_max:
+      value: 30.0
+      unit: rad/s
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_t_max:
+      value: 10.0
+      unit: N*m
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_kp:
+      value: 10.0
+      unit: N*m/rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/control_gains.yaml
+      status: upstream_config
+      owner: Om with Adnan
+    mit_kd:
+      value: 0.7
+      unit: N*m*s/rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/control_gains.yaml
+      status: upstream_config
+      owner: Om with Adnan
+    motor_mass:
+      value: 0.3
+      unit: kg
+      source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+      status: datasheet
+      owner: Om with Adnan
+- id: openarm_right_joint6
+  kind: joint_motor
+  description: OpenArm v2.0 right arm joint 6 motor
+  urdf_joint: openarm_right_joint6
+  part:
+    value: DAMIAO DM-J4310-2EC V1.1
+    unit: null
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: datasheet
+    owner: Om with Adnan
+  revision:
+    value: OpenArm v2.0 kit, upstream pin openarm_description @14ff67b
+    unit: null
+    source: config/upstream_pins.yaml
+    status: decision
+    owner: Om with Adnan
+    note: Delivered kit revision not yet recorded.
+  bus:
+    value: can0
+    unit: null
+    source: openarm docs @e15e09e website/docs/setup/openarm-setup/1-motor-id.mdx; openarm_description @14ff67b
+      assets/robot/openarm_v2.0/urdf/ros2_control/openarm.bimanual.ros2_control.xacro
+    status: upstream_config
+    owner: Om with Adnan
+    note: Upstream default naming (right arm can0, left arm can1); the robot's SocketCAN names are set at bring-up.
+  node_id:
+    value: send 0x06, receive 0x16
+    unit: null
+    source: openarm docs @e15e09e website/docs/setup/openarm-setup/1-motor-id.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+    note: Same IDs on both arms; the arms are separated by bus.
+  bitrate:
+    value: 1000000
+    unit: bit/s
+    source: openarm docs @e15e09e 2-can-setup.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+    note: 'CAN FD: arbitration 1 Mbit/s, data 5 Mbit/s, BRS on every frame.'
+  control_mode:
+    value: MIT (position, velocity, feed-forward torque with kp, kd)
+    unit: null
+    source: openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+  gear_ratio:
+    value: 10.0
+    unit: '1'
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+  rated_torque:
+    value: 3.0
+    unit: N*m
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Output side.
+  peak_torque:
+    value: 7.0
+    unit: N*m
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: URDF effort limit is 7 N*m (openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml).
+      Rated is 3 N*m; sustained loads above it overheat the wrist.
+  rated_speed:
+    value: 12.5664
+    unit: rad/s
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx (120 rpm at 24 V)
+    status: datasheet
+    owner: Om with Adnan
+  max_speed:
+    value: 20.944
+    unit: rad/s
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx (200 rpm no-load at 24 V)
+    status: datasheet
+    owner: Om with Adnan
+    note: URDF velocity limit is 20.944 rad/s (openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml).
+  rated_current:
+    value: 2.5
+    unit: A
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Motor phase current, not bus current.
+  peak_current:
+    value: 7.5
+    unit: A
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Motor phase current, not bus current.
+  rated_voltage:
+    value: 24.0
+    unit: V
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+  supply_bus_voltage_nominal:
+    value: 25.6
+    unit: V
+    source: E-01 rev1.8 (arms on the raw SAFE bus, 25.6 V nominal, up to 29.2 V; gate ARM-VOLT open)
+    status: decision
+    owner: Evans
+  supply_bus_voltage_max:
+    value: 29.2
+    unit: V
+    source: E-01 rev1.8 (arms on the raw SAFE bus, 25.6 V nominal, up to 29.2 V; gate ARM-VOLT open)
+    status: decision
+    owner: Evans
+    note: Above the 24 V motor rating; confirming the supplier limit is gate ARM-VOLT (Om / Alex).
+  brake_present:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: OpenArm safety guide reports high backdrivability and rapid load fall on power loss; it does not specify whether a separate brake is fitted.
+  brake_holding_torque:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_release_time:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_engage_time:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_coil_voltage:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  rotor_inertia:
+    value: null
+    unit: kg*m^2
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'TODO(Om): DAMIAO datasheet rotor inertia (not in the OpenArm docs).'
+  joint_damping:
+    value: null
+    unit: N*m*s/rad
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'No upstream value: no <dynamics> and openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/friction.yaml
+      (empty). Identification test needed.'
+  joint_friction:
+    value: null
+    unit: N*m
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'No upstream value: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/friction.yaml
+      (empty). Identification test needed.'
+  heartbeat_period:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Om with Adnan
+    note: MIT protocol has no heartbeat; each command gets a reply.
+  comm_timeout:
+    value: null
+    unit: s
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'TODO(Om): DAMIAO comm-loss protection time is a motor register; value not in any input.'
+  extra:
+    joint_lower_limit:
+      value: -0.7854
+      unit: rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    joint_upper_limit:
+      value: 0.7854
+      unit: rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    urdf_effort_limit:
+      value: 7.0
+      unit: N*m
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    urdf_velocity_limit:
+      value: 20.944
+      unit: rad/s
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    mit_p_max:
+      value: 12.5
+      unit: rad
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_v_max:
+      value: 30.0
+      unit: rad/s
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_t_max:
+      value: 10.0
+      unit: N*m
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_kp:
+      value: 10.0
+      unit: N*m/rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/control_gains.yaml
+      status: upstream_config
+      owner: Om with Adnan
+    mit_kd:
+      value: 0.6
+      unit: N*m*s/rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/control_gains.yaml
+      status: upstream_config
+      owner: Om with Adnan
+    motor_mass:
+      value: 0.3
+      unit: kg
+      source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+      status: datasheet
+      owner: Om with Adnan
+- id: openarm_right_joint7
+  kind: joint_motor
+  description: OpenArm v2.0 right arm joint 7 motor
+  urdf_joint: openarm_right_joint7
+  part:
+    value: DAMIAO DM-J4310-2EC V1.1
+    unit: null
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: datasheet
+    owner: Om with Adnan
+  revision:
+    value: OpenArm v2.0 kit, upstream pin openarm_description @14ff67b
+    unit: null
+    source: config/upstream_pins.yaml
+    status: decision
+    owner: Om with Adnan
+    note: Delivered kit revision not yet recorded.
+  bus:
+    value: can0
+    unit: null
+    source: openarm docs @e15e09e website/docs/setup/openarm-setup/1-motor-id.mdx; openarm_description @14ff67b
+      assets/robot/openarm_v2.0/urdf/ros2_control/openarm.bimanual.ros2_control.xacro
+    status: upstream_config
+    owner: Om with Adnan
+    note: Upstream default naming (right arm can0, left arm can1); the robot's SocketCAN names are set at bring-up.
+  node_id:
+    value: send 0x07, receive 0x17
+    unit: null
+    source: openarm docs @e15e09e website/docs/setup/openarm-setup/1-motor-id.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+    note: Same IDs on both arms; the arms are separated by bus.
+  bitrate:
+    value: 1000000
+    unit: bit/s
+    source: openarm docs @e15e09e 2-can-setup.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+    note: 'CAN FD: arbitration 1 Mbit/s, data 5 Mbit/s, BRS on every frame.'
+  control_mode:
+    value: MIT (position, velocity, feed-forward torque with kp, kd)
+    unit: null
+    source: openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+  gear_ratio:
+    value: 10.0
+    unit: '1'
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+  rated_torque:
+    value: 3.0
+    unit: N*m
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Output side.
+  peak_torque:
+    value: 7.0
+    unit: N*m
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: URDF effort limit is 7 N*m (openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml).
+      Rated is 3 N*m; sustained loads above it overheat the wrist.
+  rated_speed:
+    value: 12.5664
+    unit: rad/s
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx (120 rpm at 24 V)
+    status: datasheet
+    owner: Om with Adnan
+  max_speed:
+    value: 20.944
+    unit: rad/s
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx (200 rpm no-load at 24 V)
+    status: datasheet
+    owner: Om with Adnan
+    note: URDF velocity limit is 20.944 rad/s (openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml).
+  rated_current:
+    value: 2.5
+    unit: A
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Motor phase current, not bus current.
+  peak_current:
+    value: 7.5
+    unit: A
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Motor phase current, not bus current.
+  rated_voltage:
+    value: 24.0
+    unit: V
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+  supply_bus_voltage_nominal:
+    value: 25.6
+    unit: V
+    source: E-01 rev1.8 (arms on the raw SAFE bus, 25.6 V nominal, up to 29.2 V; gate ARM-VOLT open)
+    status: decision
+    owner: Evans
+  supply_bus_voltage_max:
+    value: 29.2
+    unit: V
+    source: E-01 rev1.8 (arms on the raw SAFE bus, 25.6 V nominal, up to 29.2 V; gate ARM-VOLT open)
+    status: decision
+    owner: Evans
+    note: Above the 24 V motor rating; confirming the supplier limit is gate ARM-VOLT (Om / Alex).
+  brake_present:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: OpenArm safety guide reports high backdrivability and rapid load fall on power loss; it does not specify whether a separate brake is fitted.
+  brake_holding_torque:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_release_time:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_engage_time:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_coil_voltage:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  rotor_inertia:
+    value: null
+    unit: kg*m^2
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'TODO(Om): DAMIAO datasheet rotor inertia (not in the OpenArm docs).'
+  joint_damping:
+    value: null
+    unit: N*m*s/rad
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'No upstream value: no <dynamics> and openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/friction.yaml
+      (empty). Identification test needed.'
+  joint_friction:
+    value: null
+    unit: N*m
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'No upstream value: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/friction.yaml
+      (empty). Identification test needed.'
+  heartbeat_period:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Om with Adnan
+    note: MIT protocol has no heartbeat; each command gets a reply.
+  comm_timeout:
+    value: null
+    unit: s
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'TODO(Om): DAMIAO comm-loss protection time is a motor register; value not in any input.'
+  extra:
+    joint_lower_limit:
+      value: -1.5708
+      unit: rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    joint_upper_limit:
+      value: 1.5708
+      unit: rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    urdf_effort_limit:
+      value: 7.0
+      unit: N*m
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    urdf_velocity_limit:
+      value: 20.944
+      unit: rad/s
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    mit_p_max:
+      value: 12.5
+      unit: rad
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_v_max:
+      value: 30.0
+      unit: rad/s
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_t_max:
+      value: 10.0
+      unit: N*m
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_kp:
+      value: 10.0
+      unit: N*m/rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/control_gains.yaml
+      status: upstream_config
+      owner: Om with Adnan
+    mit_kd:
+      value: 0.5
+      unit: N*m*s/rad
+      source: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/control_gains.yaml
+      status: upstream_config
+      owner: Om with Adnan
+    motor_mass:
+      value: 0.3
+      unit: kg
+      source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+      status: datasheet
+      owner: Om with Adnan
+- id: openarm_right_finger_joint1
+  kind: gripper_motor
+  description: OpenArm v2.0 right pinch gripper motor (motor ID 8)
+  urdf_joint: openarm_right_finger_joint1
+  part:
+    value: DAMIAO DM-J4310-2EC V1.1
+    unit: null
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: datasheet
+    owner: Om with Adnan
+  revision:
+    value: OpenArm v2.0 kit, upstream pin openarm_description @14ff67b
+    unit: null
+    source: config/upstream_pins.yaml
+    status: decision
+    owner: Om with Adnan
+    note: Delivered kit revision not yet recorded.
+  bus:
+    value: can0
+    unit: null
+    source: openarm docs @e15e09e website/docs/setup/openarm-setup/1-motor-id.mdx; openarm_description @14ff67b
+      assets/robot/openarm_v2.0/urdf/ros2_control/openarm.bimanual.ros2_control.xacro
+    status: upstream_config
+    owner: Om with Adnan
+    note: Upstream default naming (right arm can0, left arm can1); the robot's SocketCAN names are set at bring-up.
+  node_id:
+    value: send 0x08, receive 0x18
+    unit: null
+    source: openarm docs @e15e09e website/docs/setup/openarm-setup/1-motor-id.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+    note: Same IDs on both arms; the arms are separated by bus.
+  bitrate:
+    value: 1000000
+    unit: bit/s
+    source: openarm docs @e15e09e 2-can-setup.mdx; openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+    note: 'CAN FD: arbitration 1 Mbit/s, data 5 Mbit/s, BRS on every frame.'
+  control_mode:
+    value: MIT (position, velocity, feed-forward torque with kp, kd)
+    unit: null
+    source: openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp
+    status: upstream_config
+    owner: Om with Adnan
+  gear_ratio:
+    value: 10.0
+    unit: '1'
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+  rated_torque:
+    value: 3.0
+    unit: N*m
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Output side.
+  peak_torque:
+    value: 7.0
+    unit: N*m
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: URDF effort limit is 7 N*m (openarm_description @14ff67b assets/end_effector/pinch_gripper/config/joint/joint_limits.yaml).
+  rated_speed:
+    value: 12.5664
+    unit: rad/s
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx (120 rpm at 24 V)
+    status: datasheet
+    owner: Om with Adnan
+  max_speed:
+    value: 20.944
+    unit: rad/s
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx (200 rpm no-load at 24 V)
+    status: datasheet
+    owner: Om with Adnan
+    note: URDF velocity limit is 5.0 rad/s (openarm_description @14ff67b assets/end_effector/pinch_gripper/config/joint/joint_limits.yaml).
+  rated_current:
+    value: 2.5
+    unit: A
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Motor phase current, not bus current.
+  peak_current:
+    value: 7.5
+    unit: A
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+    note: Motor phase current, not bus current.
+  rated_voltage:
+    value: 24.0
+    unit: V
+    source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+    status: datasheet
+    owner: Om with Adnan
+  supply_bus_voltage_nominal:
+    value: 25.6
+    unit: V
+    source: E-01 rev1.8 (arms on the raw SAFE bus, 25.6 V nominal, up to 29.2 V; gate ARM-VOLT open)
+    status: decision
+    owner: Evans
+  supply_bus_voltage_max:
+    value: 29.2
+    unit: V
+    source: E-01 rev1.8 (arms on the raw SAFE bus, 25.6 V nominal, up to 29.2 V; gate ARM-VOLT open)
+    status: decision
+    owner: Evans
+    note: Above the 24 V motor rating; confirming the supplier limit is gate ARM-VOLT (Om / Alex).
+  brake_present:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: OpenArm safety guide reports high backdrivability and rapid load fall on power loss; it does not specify whether a separate brake is fitted.
+  brake_holding_torque:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_release_time:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_engage_time:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  brake_coil_voltage:
+    value: null
+    unit: null
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: Unknown until brake presence and the corresponding specification are confirmed.
+  rotor_inertia:
+    value: null
+    unit: kg*m^2
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'TODO(Om): DAMIAO datasheet rotor inertia (not in the OpenArm docs).'
+  joint_damping:
+    value: null
+    unit: N*m*s/rad
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'No upstream value: no <dynamics> and openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/friction.yaml
+      (empty). Identification test needed.'
+  joint_friction:
+    value: null
+    unit: N*m
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'No upstream value: openarm_description @14ff67b assets/robot/openarm_v2.0/config/arm/control/friction.yaml
+      (empty). Identification test needed.'
+  heartbeat_period:
+    value: null
+    unit: null
+    source: null
+    status: not_applicable
+    owner: Om with Adnan
+    note: MIT protocol has no heartbeat; each command gets a reply.
+  comm_timeout:
+    value: null
+    unit: s
+    source: null
+    status: unknown
+    owner: Om with Adnan
+    note: 'TODO(Om): DAMIAO comm-loss protection time is a motor register; value not in any input.'
+  extra:
+    joint_lower_limit:
+      value: -0.7854
+      unit: rad
+      source: openarm_description @14ff67b assets/end_effector/pinch_gripper/config/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    joint_upper_limit:
+      value: 0.0
+      unit: rad
+      source: openarm_description @14ff67b assets/end_effector/pinch_gripper/config/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    urdf_effort_limit:
+      value: 7.0
+      unit: N*m
+      source: openarm_description @14ff67b assets/end_effector/pinch_gripper/config/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    urdf_velocity_limit:
+      value: 5.0
+      unit: rad/s
+      source: openarm_description @14ff67b assets/end_effector/pinch_gripper/config/joint/joint_limits.yaml
+      status: upstream_urdf
+      owner: Om with Adnan
+    mit_p_max:
+      value: 12.5
+      unit: rad
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_v_max:
+      value: 30.0
+      unit: rad/s
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_t_max:
+      value: 10.0
+      unit: N*m
+      source: openarm_can @bfd4e52 (1.4.1) include/openarm/damiao_motor/dm_motor_constants.hpp MOTOR_LIMIT_PARAMS
+      status: upstream_config
+      owner: Om with Adnan
+    mit_kp:
+      value: 5.0
+      unit: N*m/rad
+      source: openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp (GRIPPER_KP)
+      status: upstream_config
+      owner: Om with Adnan
+    mit_kd:
+      value: 0.1
+      unit: N*m*s/rad
+      source: openarm_ros2 @4e837e1 openarm_hardware/include/openarm_hardware/openarm_simple_hardware.hpp (GRIPPER_KD)
+      status: upstream_config
+      owner: Om with Adnan
+    motor_mass:
+      value: 0.3
+      unit: kg
+      source: openarm docs @e15e09e website/docs/hardware/openarm-2.0/motor.mdx
+      status: datasheet
+      owner: Om with Adnan
+    force_limit:
+      value: null
+      unit: N
+      source: null
+      status: unknown
+      owner: Om with Adnan
+      note: No gripper force or current limit in openarm_ros2 @4e837e1 (MIT kp 5, kd 0.1, tau 0).
+    controller_update_rate:
+      value: 750.0
+      unit: Hz
+      source: openarm_ros2 @4e837e1 bringup controllers config
+      status: upstream_config
+      owner: Om with Adnan

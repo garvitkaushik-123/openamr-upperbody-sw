@@ -12,7 +12,7 @@ LIFT rule as scenario design, not an interlock. The twelve pose rows are the 12 
 The stack is `moveit.launch.py sim:=mock`: robot_state_publisher, ros2_control_node on mock_components, six controllers, move_group.
 Each pose is a MoveGroup action goal made of exactly the SRDF's values for that group state: plan, then execute through MoveIt's
 trajectory execution manager and moveit_simple_controller_manager into left/right_arm_controller (FollowJointTrajectory) and
-left/right_gripper_controller (GripperCommand, option 1 of ADR-009 point 4). The grippers go to `closed` and back to `open` with each
+left/right_gripper_controller (GripperCommand, option 1 of ADR-009 point 4). The grippers go to `open` and back to `closed` with each
 hand's OWN value (left +0.7854, right -0.7854), so the per-hand sign is exercised end to end and not only checked statically (M05).
 
 `simulation` class: mock hardware reflects its command back as state, so this shows that MoveIt, the controller handles and the controller
@@ -136,5 +136,5 @@ class TestProcessesAlive(unittest.TestCase):
 @launch_testing.post_shutdown_test()
 @unittest.skipUnless(A7_ENABLED, SKIP_REASON)  # tracking: openAMRobot/openamr-upperbody-sw#16
 class TestShutdown(unittest.TestCase):
-    def test_m01_processes_started_and_exited_cleanly(self, proc_info):
-        stack_healthy(proc_info, expected=EXPECTED_PROCESSES, sidecar=("M01", f"mock_{LIFT_STOP}"))
+    def test_m01_processes_started_and_exited_cleanly(self, proc_info, proc_output):
+        stack_healthy(proc_info, expected=EXPECTED_PROCESSES, sidecar=("M01", f"mock_{LIFT_STOP}"), proc_output=proc_output)

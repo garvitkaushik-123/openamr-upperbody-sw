@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<!-- SPDX-License-Identifier: MIT -->
+<!--
+  The combined model at hardware_profile:=real, for the software-in-the-loop launch: the real driver
+  (openarm_hardware/OpenArmHW) on the two virtual CAN interfaces.
+
+  The combined model is included as it is. Nothing in it changes. Upstream's ros2_control macro
+  (openarm_description, openarm.bimanual.ros2_control.xacro) declares left_can_interface, right_can_interface and can_fd
+  as `:=^|default` parameters: it takes them from the enclosing scope when they are defined there. The three properties
+  below define them, so the driver opens the vcan interfaces instead of upstream's can1 and can0.
+
+    xacro openarm_sil_real.urdf.xacro hardware_profile:=real [left_can_interface:=vcan_arm_l] [right_can_interface:=vcan_arm_r]
+          [can_fd:=true] [any argument of combined_robot.xacro]
+-->
+<robot name="openamrobot" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:arg name="left_can_interface" default="vcan_arm_l"/>
+  <xacro:arg name="right_can_interface" default="vcan_arm_r"/>
+  <xacro:arg name="can_fd" default="true"/>
+  <xacro:property name="left_can_interface" value="$(arg left_can_interface)"/>
+  <xacro:property name="right_can_interface" value="$(arg right_can_interface)"/>
+  <xacro:property name="can_fd" value="$(arg can_fd)"/>
+
+  <xacro:include filename="$(find openamrobot_upperbody_description)/urdf/combined_robot.xacro"/>
+</robot>

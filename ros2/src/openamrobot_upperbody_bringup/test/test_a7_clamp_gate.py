@@ -103,3 +103,17 @@ def test_the_report_gates_on_the_two_numbers_and_labels_the_counts():
     bad = a7_support.clamp_record(Client(activations=3, over_epsilon=2, max_over_epsilon_rad=4e-5))
     totals = builder.clamp_totals({"L1000": run_of(bad)})
     assert not totals["gate"]["passes"] and totals["gate"]["excursions_beyond_epsilon"] == 2
+
+
+def test_the_lift_excursion_of_run_42527494905_fails_and_is_reported_in_metres():
+    """upperbody-sw #48: the A7 failure was lift_joint (prismatic) 3.24e-5 past its lower limit; the message said rad. Same gate, same epsilon."""
+    gate = a7_support.clamp_gate(stats(over_epsilon=1, max_over_epsilon_rad=3.244758e-05, max_over_epsilon_joint="lift_joint",
+                                       max_magnitude_rad=5.4e-6, max_magnitude_joint="lift_joint"))
+    assert not gate["passes"] and gate["largest_overshoot_unit"] == "m"
+    assert any("lift_joint: 3.24e-05 m" in r for r in gate["reasons"]) and any("3.24e-05 m on lift_joint is not below epsilon 1e-05 m" in r for r in gate["reasons"])
+    assert a7_support.EPSILON == 1e-5              # not widened
+
+
+def test_a_revolute_overshoot_is_still_reported_in_radians():
+    gate = a7_support.clamp_gate(stats(over_epsilon=1, max_over_epsilon_rad=3e-5, max_over_epsilon_joint="openarm_right_finger_joint1"))
+    assert gate["largest_overshoot_unit"] == "rad" and any("3e-05 rad" in r for r in gate["reasons"])

@@ -6,10 +6,10 @@
     base_footprint (platform-sw: the root, on the floor under the drive-axle midpoint, REP 105)
       -> base_link (platform-sw, 0.098 m above it) and everything platform-sw declares on it, near-field frames included
       -> lift_column_base_link                                  (option B, openamrobot_upperbody.xacro; datum column_axis_x_bp000)
-           -> second_estop_link, lift_stop_sensor_{l1000,l1175,l1350}_link   (item 24 equipment, static: geometry only)
+           -> lift_stop_sensor_{l1000,l1175,l1350}_link   (item 24 equipment, static, on the column rear face: geometry only)
            -> lift_joint (prismatic, 0..0.350 m; mock/gazebo: 800 N, 0.018 m/s, planned; real: effort 0 velocity 0) -> lift_carriage_link
                 -> arm_profile_link -> getac_tablet_link, head_light_link          (P-03 item 24 equipment, upper_body_equipment.xacro)
-                -> adapter_plate_link -> lift_flag_rod_link -> lift_flag_link       (item 24)
+                -> adapter_plate_link -> second_estop_link, lift_flag_rod_link -> lift_flag_link   (item 24; P-03 rev20.4 item 28)
                 -> head_camera_mount_link -> head_camera_link -> head_camera_optical_frame     (option B)
                 -> openarm_{left,right}_base_link                (declared by the upstream arm macro, at option B's mount pose)
                      -> openarm_{left,right}_* arms + grippers   (upstream, one call per arm; ADR-008)
@@ -36,6 +36,9 @@
 
   <!-- The defaults are option B's baseline; T01 asserts they equal upperbody_configuration.yaml's `baseline:`. -->
   <xacro:arg name="column" default="dold_v4_350"/>
+  <!-- roadmap_masses (8 Nov 2026): true (default) = every upper-body link with mass from config/roadmap_mass_export.yaml;
+       false = the datum inertials (lift as one box, equipment boxes), kept for the datum tests and the tl3_400 fallback -->
+  <xacro:arg name="roadmap_masses" default="true"/>
   <xacro:arg name="base_plate" default="bp000"/>
   <xacro:arg name="head_pitch" default="hp30"/>
   <xacro:arg name="base_tilt" default="bt10"/>
@@ -47,6 +50,16 @@
        description declares the hardware contract and knows nothing about where a controller config lives (ADR-003); the launch
        that starts the simulation supplies it. Only the gazebo profile reads it. -->
   <xacro:arg name="controllers_file" default=""/>
+  <!-- A second controller parameter file for the gazebo profile, read after controllers_file (a later file wins). The simulation
+       launch passes the control package's sim_overlay.yaml: the simulation-only controller values (update rate, gripper max_effort).
+       Empty by default; only the gazebo profile reads it. -->
+  <xacro:arg name="controllers_overlay_file" default=""/>
+  <!-- Simulator joint dynamics on the OpenArm joints (config/sim_dynamics/openarm_v2.yaml, urdf/sim_dynamics.xacro):
+         auto (default)  on for hardware_profile gazebo, off for mock and real
+         on              on, for a MuJoCo-facing URDF (use with hardware_profile mock). Refused with hardware_profile real.
+         off             off, to compare a simulation with and without them
+       The real profile never carries <dynamics> on an OpenArm joint. -->
+  <xacro:arg name="sim_dynamics" default="auto"/>
 
   <!-- Args are read as raw strings: xacro would otherwise turn "false"/"true" (any case) and numerals into
        bool/number, and the accepted-value check below compares strings. The quotes + lazy_eval="false" keep them str. -->
@@ -59,6 +72,8 @@
   <xacro:property name="enable_planar_base" lazy_eval="false" value="'$(arg enable_planar_base)'"/>
   <xacro:property name="datums_file" lazy_eval="false" value="'$(arg datums_file)'"/>
   <xacro:property name="controllers_file" lazy_eval="false" value="'$(arg controllers_file)'"/>
+  <xacro:property name="controllers_overlay_file" lazy_eval="false" value="'$(arg controllers_overlay_file)'"/>
+  <xacro:property name="sim_dynamics" lazy_eval="false" value="'$(arg sim_dynamics)'"/>
 
   <xacro:property name="datums" value="${xacro.load_yaml(datums_file)}"/>
   <xacro:property name="upperbody" lazy_eval="false"
@@ -79,6 +94,13 @@
   <xacro:openamr_require_one_of arg="arm_package" value="'${arm_package}'" accepted="${['openarm', 'so101', 'none']}"/>
   <xacro:openamr_require_one_of arg="hardware_profile" value="'${hardware_profile}'" accepted="${['mock', 'gazebo', 'real']}"/>
   <xacro:openamr_require_one_of arg="enable_planar_base" value="'${enable_planar_base}'" accepted="${['true', 'false']}"/>
+  <xacro:openamr_require_one_of arg="sim_dynamics" value="'${sim_dynamics}'" accepted="${['auto', 'on', 'off']}"/>
+  <xacro:if value="${sim_dynamics == 'on' and hardware_profile == 'real'}">
+    <xacro:property name="openamr_sim_dynamics_on_real" lazy_eval="false"
+                    value="${xacro.fatal('sim_dynamics:=on with hardware_profile:=real: simulator joint dynamics are never applied to the real-hardware profile')}"/>
+  </xacro:if>
+  <xacro:property name="sim_dynamics_on" lazy_eval="false"
+                  value="${arm_package == 'openarm' and (sim_dynamics == 'on' or (sim_dynamics == 'auto' and hardware_profile == 'gazebo'))}"/>
 
   <!-- Base: a full <robot> file from platform-sw, included unchanged; xacro merges its content. Since platform-sw 935efc7 its
        root is base_footprint (REP 105) and it declares the near-field frames, the base camera and the IMU: none of those is
@@ -110,8 +132,9 @@
        Shape: a uniform box of the column's section (datum, axis convention x fore-aft, y lateral) and its retracted length (option B's
        config), centred at half of that length above lift_column_base_link. All of the mass is on the fixed side (the catalogue
        does not split it). Visual and collision (column_geometry): the OUTER stage a box of lift_column_section on lift_column_base_link,
-       the INNER stage a box of lift_inner_section (strictly smaller, from the same DOLD datasheet page) on lift_carriage_link; the inner
-       stage's length is the stroke, which the datasheet does not give as a length. The adapter plate (adapter_plate_section) is its own link. -->
+       its top lift_static_profile_top_below_column_top below the retracted column top, the INNER stage a box of lift_inner_section (section
+       and length, strictly smaller in section) on lift_carriage_link, its top at the carriage frame (DOLD STEP of 8 Nov 2026, P-03 rev20.4
+       item 28). The adapter plate (adapter_plate_section) is its own link, adapter_plate_rear_extension behind the column's rear face. -->
   <xacro:property name="lift_mass_by_column" lazy_eval="false"
                   value="${dict(dold_v4_350=dt['lift_mass_dold_v4_350']['value'], tl3_400=dt['lift_mass_tl3_400']['value'])}"/>
   <xacro:property name="lift_mass" lazy_eval="false" value="${lift_mass_by_column[column]}"/>
@@ -143,6 +166,17 @@
                                 iyy=lift_mass * (lift_section[0] * lift_section[0] + lift_h * lift_h) / 12,
                                 izz=lift_mass * (lift_section[0] * lift_section[0] + lift_section[1] * lift_section[1]) / 12)}"/>
 
+  <!-- Carriage masses (owner decision 8 Nov 2026): the roadmap model is the reference; one source, copied verbatim from
+       openamrobot-docs docs/assets/roadmap/model/mass_export.yaml (config/roadmap_mass_export.yaml, test_roadmap_masses.py). -->
+  <xacro:property name="roadmap_masses" lazy_eval="false"
+                  value="${xacro.load_yaml('$(find openamrobot_upperbody_description)/config/roadmap_mass_export.yaml')}"/>
+  <!-- every upper-body link with mass reads its inertial from the export (roadmap_inertial.xacro); the base group is the
+       platform's (platform-sw reads the same export); the openarm group is the upstream link masses (not overridden). The export is the DOLD build: with
+       column tl3_400 every link keeps its datum inertial. -->
+  <xacro:property name="roadmap_links" lazy_eval="false"
+                  value="${dict([(l, e) for g, v in roadmap_masses['groups'].items() if g not in ('base', 'openarm') for l, e in v['links'].items()]) if column == 'dold_v4_350' and '$(arg roadmap_masses)' == 'true' else dict()}"/>
+  <xacro:property name="carriage_inertial" lazy_eval="false" value="''"/>
+
   <!-- Option B's upper body, on base_footprint: its heights are from the floor. With arm_package == openarm the upstream macro below
        declares openarm_{left,right}_base_link and their mount joints at the same pose (emit_arm_mounts false); with none or so101
        the mount frames are option B's own, so every expansion has them. -->
@@ -150,9 +184,9 @@
   <xacro:openamrobot_upperbody parent="base_footprint" column="${column}" base_plate="${base_plate}" head_pitch="${head_pitch}"
                                base_tilt="${base_tilt}" column_axis_x_bp000="${dt['column_axis_x_bp000']['value']}"
                                emit_arm_mounts="${arm_package != 'openarm'}" column_inertial="${lift_inertial}"
-                               column_geometry="${dict(section_x=lift_section[0], section_y=lift_section[1], inner_x=lift_inner[0], inner_y=lift_inner[1])}"
-                               adapter_plate="${dict(size_x=plate_section[0], size_y=plate_section[1], center_x=-lift_section[0] / 2 + plate_section[0] / 2)}"
-                               datums="${datums}" lift_limits="${lift_limits}"/>
+                               column_geometry="${dict(section_x=lift_section[0], section_y=lift_section[1], fixed_length=lift_h - dt['lift_static_profile_top_below_column_top']['value'], inner_x=lift_inner[0], inner_y=lift_inner[1], inner_length=lift_inner[2])}"
+                               adapter_plate="${dict(size_x=plate_section[0], size_y=plate_section[1], center_x=-lift_section[0] / 2 - dt['adapter_plate_rear_extension']['value'] + plate_section[0] / 2)}"
+                               datums="${datums}" lift_limits="${lift_limits}" carriage_inertial="${carriage_inertial}"/>
 
   <!-- so101: stub only. A9 (Jonathan) owns everything below so101_mount_link; nothing else is emitted for it here.
        none: the upper body only. -->
@@ -166,6 +200,10 @@
   </xacro:if>
   <xacro:if value="${arm_package == 'openarm'}">
     <xacro:include filename="$(find openarm_description)/assets/robot/openarm_v2.0/urdf/utils/openarm_v20_robot.xacro"/>
+    <!-- Simulator joint dynamics: after the upstream include (it redefines one upstream macro) and before the arm calls. -->
+    <xacro:if value="${sim_dynamics_on}">
+      <xacro:include filename="$(find openamrobot_upperbody_description)/urdf/sim_dynamics.xacro"/>
+    </xacro:if>
     <xacro:property name="openarm_config_root" value="$(find openarm_description)/assets/robot/openarm_v2.0/config"/>
     <xacro:property name="left_preset_file" value="$(find openamrobot_upperbody_description)/config/openarm_preset_left.yaml"/>
     <xacro:property name="right_preset_file" value="$(find openamrobot_upperbody_description)/config/openarm_preset_right.yaml"/>
@@ -201,7 +239,8 @@
 
     <!-- Only here: so101 and none get no ros2_control. Needs the arm joints emitted above. -->
     <xacro:include filename="$(find openamrobot_upperbody_description)/urdf/ros2_control.xacro"/>
-    <xacro:openamr_arm_ros2_control hardware_profile="${hardware_profile}" controllers_file="${controllers_file}"/>
+    <xacro:openamr_arm_ros2_control hardware_profile="${hardware_profile}" controllers_file="${controllers_file}"
+                                    controllers_overlay_file="${controllers_overlay_file}"/>
     <!-- The lift: mock and gazebo only (issue #17); real gets none. -->
     <xacro:openamr_lift_ros2_control hardware_profile="${hardware_profile}"/>
   </xacro:if>

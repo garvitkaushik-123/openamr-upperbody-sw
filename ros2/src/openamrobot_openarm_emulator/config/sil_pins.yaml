@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: MIT
+# The upstream commits the software-in-the-loop path is built and tested against. Full 40-hex hashes, quoted.
+#   openarm_ros2          the real driver, openarm_hardware/OpenArmHW. The same commit as
+#                         openamrobot_upperbody_description/config/upstream_pins.yaml (test_package_static checks it).
+#   openarm_can           the CAN library the driver links. Upstream openarm_ros2 does not pin it. This is tag 1.4.1,
+#                         the latest release, and the version the audit of 28 Sep 2026 read.
+#   openarm_description   as upstream_pins.yaml.
+#   openarm_docs          enactic/openarm, the CAN setup document (website/docs/setup/openarm-setup/2-can-setup.mdx). Read, not built.
+schema_version: 1
+pins:
+  openarm_ros2: "4e837e1d0dae692ff67b560b69d8d281d7a8d4ed"
+  openarm_can: "bfd4e52194aefe38389fa6e670be3738136facb9"
+  openarm_description: "14ff67b638ff1c738a1b9a6be8aaa5ce5ed2c831"
+  openarm_docs: "e15e09e056098348d6f437389bbf48179caa82b6"

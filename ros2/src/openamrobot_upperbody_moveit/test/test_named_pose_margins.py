@@ -16,8 +16,8 @@ from openamrobot_upperbody_moveit.named_poses import MIN_POSE_MARGIN_RAD, below_
 
 OWNER = "owner decision, Alex Reznichenko, 1 Nov 2026"
 UPSTREAM_HOME = f"ADR-007: upstream's `home`, imported verbatim (test_srdf_import.py compares it with openarm_ros2 @ the pin): joint4 at its lower limit 0 ({OWNER})"
-M05_OPEN = f"ADR-009 point 5 / M05 (test_gripper_sign.py): `open` is the end both hands' finger ranges share, 0 ({OWNER})"
-M05_CLOSED = f"ADR-009 point 5 / M05 (test_gripper_sign.py): `closed` is each hand's own far limit ({OWNER})"
+M05_OPEN = f"ADR-009 point 5 / M05 (test_gripper_sign.py): `open` is each hand's own far limit ({OWNER}; names corrected 14 Nov 2026)"
+M05_CLOSED = f"ADR-009 point 5 / M05 (test_gripper_sign.py): `closed` is the end both hands' finger ranges share, 0 ({OWNER}; names corrected 14 Nov 2026)"
 EXEMPT = {
     ("left_arm", "home", "openarm_left_joint4"): UPSTREAM_HOME,
     ("right_arm", "home", "openarm_right_joint4"): UPSTREAM_HOME,

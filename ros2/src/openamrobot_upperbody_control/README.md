@@ -9,7 +9,7 @@ profile (`mock`, `gazebo`, `real`; ADR-003): the plugin differs, the controllers
 | `left_arm_controller`, `right_arm_controller` | `joint_trajectory_controller/JointTrajectoryController` | `openarm_{left,right}_joint1..7`, position command, position and velocity state |
 | `left_gripper_controller`, `right_gripper_controller` | `position_controllers/GripperActionController` | `openarm_{left,right}_finger_joint1` |
 
-The controller manager runs at 100 Hz. The file is derived from `enactic/openarm_ros2` (`ros2_controllers.yaml` at
+The controller manager runs at 100 Hz in `arm_controllers.yaml` (750 Hz in the Gazebo simulation, see below). The file is derived from `enactic/openarm_ros2` (`ros2_controllers.yaml` at
 `4e837e1`, Apache-2.0); the header lists the three changes. The one that matters: the Jazzy `GripperActionController`
 reads `joint:` (a string), and upstream's `joints:` list makes it fail to configure with "Joint name cannot be empty".
 
@@ -55,6 +55,32 @@ What the simulated guard implements is not the agreed robot behaviour, and its n
 - **Stopping times and extra travel measured in simulation are measured values**, not accepted limits (D16) and not evidence of the
   physical robot's stopping performance.
 
+## The simulation overlay: `config/sim_overlay.yaml`
+
+Read by the Gazebo profile only, after `arm_controllers.yaml` (`gz_ros2_control` takes every `<parameters>` file in order and a later
+one wins). The mock and real profiles never read it, so `arm_controllers.yaml` and the real profile are unchanged. It holds two things,
+each a copy of the simulator dynamics profile (`openamrobot_upperbody_description/config/sim_dynamics/openarm_v2.yaml`), where the source
+of each value is written:
+
+| Parameter | Value | Why |
+|---|---|---|
+| `controller_manager.update_rate` | 750 Hz | upstream's rate for the real arm driver (`openarm_ros2` at the pin, `openarm_bringup/config/controllers/openarm_bimanual_controllers.yaml`). The simulated arm controllers now compute at the rate the real ones do upstream, so trajectory sampling and controller timing match it. The 100 Hz in `arm_controllers.yaml` came from upstream's MoveIt demo file |
+| `left_gripper_controller.max_effort`, `right_gripper_controller.max_effort` | 3.0 N*m | the rated torque of the gripper motor (DM-J4310-2EC V1.1, rated current 2.5 A), as the grip limit of the simulated gripper |
+
+**What the rate needs from the world.** `gz_ros2_control` updates the controllers on the first physics step at which one controller
+period has passed. Measured in this repository on 14 Nov 2026 (`joint_state_broadcaster` messages per second of simulated time): with
+1 ms steps a 750 Hz request gives 499.5 Hz; with the 1/1500 s step that `openamrobot_upperbody_gazebo/worlds/empty.sdf` now uses it
+gives 743.6 Hz, with 1.333 ms as the most common interval between updates (a short count window and lost messages put the count a
+little under 750). A world with 1 ms steps (platform-sw's `walled_world.sdf`) therefore runs these controllers at 500 Hz.
+
+**What `max_effort` does and does not do.** `GripperActionController` on a position command interface carries `max_effort` and does
+not enforce it, and the URDF effort limit of the finger joint (7 N*m, the motor's peak) is unchanged, so the physics still allows the
+peak. The limit is recorded on the command path; it is not a grasp force model. Enforcing it in the simulation means lowering the
+simulated finger effort or driving the finger by effort, which is a decision for the arm's owner.
+
+**The real profile (report only).** It stays at 100 Hz. Upstream runs the real driver at 750 Hz, so MIT setpoints would reach the motors
+7.5 times less often than upstream sends them. Changing it is an owner decision and needs a cycle-time measurement on the CAN bus first.
+
 ## The gripper controller's deprecation warning: do not "fix" it
 
 Every configure of the gripper controllers logs a deprecation warning. It is left in place on purpose.
@@ -81,5 +107,7 @@ what `openamrobot-manipulation` bring-up provides today; ADR-009 point 4 lists a
 `test/test_arm_controllers_yaml.py` checks, for every profile, that each joint the YAML names is declared under
 `<ros2_control>` with the interfaces its controller needs, that every declared joint has exactly one controller, and that
 the `finger_joint2` mimic has none. The runtime counterpart is L01 in `openamrobot_upperbody_bringup`.
+`test/test_sim_overlay_yaml.py` checks that the overlay equals the simulator dynamics profile, touches only controllers that exist, and
+that `arm_controllers.yaml` is still 100 Hz with no `max_effort`.
 
 See [`openamrobot_upperbody_description`](../openamrobot_upperbody_description/README.md) for the `ros2_control` blocks.

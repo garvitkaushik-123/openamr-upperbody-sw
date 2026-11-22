@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<!-- SPDX-License-Identifier: MIT -->
+<!--
+  Link inertials from the roadmap mass export (owner decision 8 Nov 2026, P-03 rev20.5 item 29: the roadmap model is the
+  reference for mass and placement, one source, every part counted once on the link where it sits).
+
+  roadmap_links: link name -> {mass_kg, com_m (link frame), inertia_kgm2 {ixx, iyy, izz}, items}, all groups of
+  config/roadmap_mass_export.yaml (verbatim copy of openamrobot-docs docs/assets/roadmap/model/mass_export.yaml, pinned in
+  config/roadmap_mass_export.source.yaml). combined_robot.xacro sets it before the upper body is instantiated; without it
+  (the upper body on its own) it is empty and each link keeps its datum inertial. test_roadmap_masses.py checks the expanded
+  combined URDF against the export, link by link.
+-->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:property name="roadmap_links" default="${dict()}"/>
+
+  <xacro:macro name="openamr_roadmap_inertial" params="link">
+    <inertial>
+      <origin xyz="${roadmap_links[link]['com_m'][0]} ${roadmap_links[link]['com_m'][1]} ${roadmap_links[link]['com_m'][2]}" rpy="0 0 0"/>
+      <mass value="${roadmap_links[link]['mass_kg']}"/>
+      <inertia ixx="${roadmap_links[link]['inertia_kgm2']['ixx']}" ixy="0" ixz="0"
+               iyy="${roadmap_links[link]['inertia_kgm2']['iyy']}" iyz="0"
+               izz="${roadmap_links[link]['inertia_kgm2']['izz']}"/>
+    </inertial>
+  </xacro:macro>
+</robot>

@@ -19,6 +19,8 @@ if(BUILD_TESTING)
   # SIGTERM/SIGINT (a child process against a stand-in controller manager), in its own ROS domain.
   find_package(ament_cmake_ros REQUIRED)
   ament_add_ros_isolated_pytest_test(lift_guard_node test/test_lift_guard_node.py TIMEOUT 180)
+  # the simulation-only overlay (upstream update rate, gripper max_effort): equal to the simulator dynamics profile, adds no controller
+  ament_add_pytest_test(sim_overlay_yaml test/test_sim_overlay_yaml.py TIMEOUT 300)
 endif()
 
 ament_package()

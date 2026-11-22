@@ -11,6 +11,9 @@ if(BUILD_TESTING)
   ament_add_pytest_test(sim_launch_shutdown test/test_sim_launch_shutdown.py TIMEOUT 120)
   # how sim.launch.py starts the controllers: the broadcaster's switch timeout and the chain on its exit code (16 Oct); no Gazebo
   ament_add_pytest_test(sim_launch_spawners test/test_sim_launch_spawners.py TIMEOUT 120)
+  ament_add_pytest_test(sim_spawn_height test/test_sim_spawn_height.py TIMEOUT 120)
+  # the simulated arm controllers update at the upstream rate: the launch passes the overlay, and the world step divides its period; no Gazebo
+  ament_add_pytest_test(sim_control_rate test/test_sim_control_rate.py TIMEOUT 120)
   # G01's rule for who reports lift_joint (issue #17): once by joint_state_broadcaster on mock/gazebo, only the merger's default on real
   ament_add_pytest_test(g01_lift_source test/test_g01_lift_source.py TIMEOUT 60)
   # G01 starts a real Gazebo server and a controller manager. It picks its own ROS_DOMAIN_ID and GZ_PARTITION (see the test),

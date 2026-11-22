@@ -3,10 +3,11 @@
 
 The head camera is option B's (head_camera_mount_link -> head_camera_link -> head_camera_optical_frame on the lift carriage, with
 sourced numbers); the two wrist cameras are ours, at the pose of their datums. P15 deleted A6's head_camera_pose placeholder."""
+import os
 import numpy as np
 import pytest
 
-from conftest import ARM_PACKAGES, BASE_PLATES, expand, load_datums, tree_facts
+from conftest import ARM_PACKAGES, BASE_PLATES, SHARE, expand, load_datums, load_yaml, tree_facts
 from urdf_utils import fixed_fk, pose_to_matrix, position
 
 WRIST_CAMERAS = {
@@ -43,7 +44,12 @@ def test_optical_frame_is_rep103(name):
 def test_wrist_camera_links_are_visual_only(name):
     link = expand(arm_package="openarm").find(f"link[@name='{name}_link']")
     assert link.find("visual") is not None
-    assert link.find("collision") is None and link.find("inertial") is None
+    assert link.find("collision") is None
+    # the wrist camera mass (BOM ARM-004) from the roadmap export, counted once (8 Nov 2026); no inertial on the datum path
+    export = load_yaml(os.path.join(SHARE, "config", "roadmap_mass_export.yaml"))
+    want = export["groups"]["sensors"]["links"][f"{name}_link"]["mass_kg"]
+    assert float(link.find("inertial/mass").get("value")) == pytest.approx(want)
+    assert expand(arm_package="openarm", roadmap_masses="false").find(f"link[@name='{name}_link']").find("inertial") is None
 
 
 def test_the_head_camera_is_option_bs_not_ours_and_has_no_datum():

@@ -1,0 +1,52 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>openamrobot_openarm_emulator</name>
+  <version>0.1.0</version>
+  <description>Software in the loop for the OpenArm 2.0 arms: emulated Damiao motors on Linux virtual CAN, driven by Gazebo joint physics, for the unmodified upstream openarm_hardware interface. Simulation only. No safety function.</description>
+  <maintainer email="info@botshare.ai">Alex Reznichenko</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>controller_interface</depend>
+  <depend>diagnostic_msgs</depend>
+  <depend>hardware_interface</depend>
+  <depend>pluginlib</depend>
+  <depend>rclcpp</depend>
+  <depend>rclcpp_lifecycle</depend>
+
+  <exec_depend>controller_manager</exec_depend>
+  <exec_depend>gz_ros2_control</exec_depend>
+  <exec_depend>iproute2</exec_depend>
+  <exec_depend>joint_state_broadcaster</exec_depend>
+  <exec_depend>joint_trajectory_controller</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>openamrobot_upperbody_control</exec_depend>
+  <exec_depend>openamrobot_upperbody_description</exec_depend>
+  <exec_depend>openamrobot_upperbody_gazebo</exec_depend>
+  <exec_depend>position_controllers</exec_depend>
+  <exec_depend>gripper_controllers</exec_depend>
+  <exec_depend>robot_state_publisher</exec_depend>
+  <exec_depend>ros_gz_bridge</exec_depend>
+  <exec_depend>ros_gz_sim</exec_depend>
+  <exec_depend>xacro</exec_depend>
+  <!-- The real driver. Not released for Jazzy: build enactic/openarm_ros2 and enactic/openarm_can from source in the
+       same workspace, at the commits of config/sil_pins.yaml (README, Build). -->
+  <exec_depend>openarm_hardware</exec_depend>
+
+  <test_depend>ament_cmake_gtest</test_depend>
+  <test_depend>ament_cmake_pytest</test_depend>
+  <test_depend>launch_testing_ament_cmake</test_depend>
+  <test_depend>launch_testing_ros</test_depend>
+  <test_depend>openarm_can</test_depend>
+  <test_depend>python3-yaml</test_depend>
+  <test_depend>control_msgs</test_depend>
+  <test_depend>sensor_msgs</test_depend>
+  <test_depend>trajectory_msgs</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

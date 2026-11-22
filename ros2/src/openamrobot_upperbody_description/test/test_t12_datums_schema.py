@@ -205,7 +205,7 @@ def _consumer_inertia(section, tmp_path):
     doc["revision"] = "2099-01-01.a"
     path = tmp_path / "datums_section.yaml"
     path.write_text(yaml.safe_dump(doc))
-    root = ET.fromstring(expand_xml(datums_file=str(path)))
+    root = ET.fromstring(expand_xml(datums_file=str(path), roadmap_masses="false"))   # the datum box (roadmap export off)
     inertia = root.find("link[@name='lift_column_base_link']/inertial/inertia")
     mass = float(root.find("link[@name='lift_column_base_link']/inertial/mass").get("value"))
     return mass, *(float(inertia.get(k)) for k in ("ixx", "iyy", "izz"))
@@ -244,19 +244,18 @@ def _box(root, link, kind):
 
 
 def _lift_inner_section_assertion(tmp_path):
-    """x fore-aft first, y lateral second, on the box of the moving stage (the carriage's box), with the stroke as its length."""
-    from conftest import UPPERBODY
-    x, y = 0.200, 0.040
-    root = _expansion_with("lift_inner_section", (x, y), tmp_path)
-    stroke = UPPERBODY["column"]["dold_v4_350"]["stroke"]
+    """x fore-aft first, y lateral second, z the stage's length, on the box of the moving stage (the carriage's box). P-03 rev20.4 item 28 (DOLD
+    STEP, 8 Nov 2026) gave the length, so the datum is a triple; before it the length was the stroke."""
+    x, y, z = 0.200, 0.040, 0.410
+    root = _expansion_with("lift_inner_section", (x, y, z), tmp_path)
     for kind in ("visual", "collision"):
-        assert _box(root, "lift_carriage_link", kind) == pytest.approx((x, y, stroke)), f"the {kind} of the moving stage does not follow lift_inner_section"
+        assert _box(root, "lift_carriage_link", kind) == pytest.approx((x, y, z)), f"the {kind} of the moving stage does not follow lift_inner_section"
     assert _box(root, "lift_column_base_link", "collision")[:2] != pytest.approx((x, y)), "the fixed stage must not follow the inner section"
 
 
 def _adapter_plate_section_assertion(tmp_path):
-    """x fore-aft first, y lateral second, thickness from geometry.adapter_plate_thickness; the rear edge stays flush with the column's rear
-    face (the 360 is 240 of column plus 120 ahead), so the plate's centre moves with its length."""
+    """x fore-aft first, y lateral second, thickness from geometry.adapter_plate_thickness; the rear edge stays adapter_plate_rear_extension behind
+    the column's rear face (P-03 rev20.4 item 28: 65 mm; it was flush), so the plate's centre moves with its length."""
     from conftest import UPPERBODY
     x, y = 0.300, 0.080
     root = _expansion_with("adapter_plate_section", (x, y), tmp_path)
@@ -265,7 +264,8 @@ def _adapter_plate_section_assertion(tmp_path):
         assert _box(root, "adapter_plate_link", kind) == pytest.approx((x, y, t))
     origin = [float(v) for v in root.find("joint[@name='adapter_plate_joint']/origin").get("xyz").split()]
     column_x = load_datums()["datums"]["lift_column_section"]["value"][0]
-    assert origin == pytest.approx([-column_x / 2 + x / 2, 0.0, t / 2])
+    extension = load_datums()["datums"]["adapter_plate_rear_extension"]["value"]
+    assert origin == pytest.approx([-column_x / 2 - extension + x / 2, 0.0, t / 2])
 
 
 def _equipment_box_assertion(datum, link, collision):
@@ -285,17 +285,6 @@ def _equipment_box_assertion(datum, link, collision):
     return assertion
 
 
-def _getac_tablet_portrait_size_assertion(tmp_path):
-    """Report only (P-03 rev20.2 item 26): the portrait envelope is the landscape box turned a quarter about the screen normal (x), so its
-    depth is the same and its lateral and vertical sides are exchanged; it is never drawn."""
-    datums = load_datums()["datums"]
-    land, port = datums["getac_tablet_size"]["value"], datums["getac_tablet_portrait_size"]["value"]
-    assert datums["getac_tablet_portrait_size"]["axis_convention"] == {"x": "fore_aft", "y": "lateral", "z": "vertical"}
-    assert port == [land[0], land[2], land[1]]
-    root = _expansion_with("getac_tablet_size", land, tmp_path)
-    assert _box(root, "getac_tablet_link", "collision") == pytest.approx(tuple(land)), "the drawn tablet is the landscape box"
-
-
 def _head_camera_bracket_post_section_assertion(tmp_path):
     """x fore-aft first, y lateral second, on the mount post's box; its height is derived (lens line minus profile top), not this datum."""
     x, y = 0.031, 0.057
@@ -310,7 +299,6 @@ def _head_camera_bracket_post_section_assertion(tmp_path):
 AXIS_ASSERTIONS = {"lift_column_section": _lift_column_section_assertion, "lift_inner_section": _lift_inner_section_assertion,
                    "adapter_plate_section": _adapter_plate_section_assertion,
                    "getac_tablet_size": _equipment_box_assertion("getac_tablet_size", "getac_tablet_link", "placeholder_getac_tablet"),
-                   "getac_tablet_portrait_size": _getac_tablet_portrait_size_assertion,
                    "head_light_size": _equipment_box_assertion("head_light_size", "head_light_link", "placeholder_head_light"),
                    "second_estop_head_size": _equipment_box_assertion("second_estop_head_size", "second_estop_link",
                                                                       "placeholder_second_estop_head"),
@@ -318,6 +306,8 @@ AXIS_ASSERTIONS = {"lift_column_section": _lift_column_section_assertion, "lift_
                                                                         "placeholder_second_estop_collar"),
                    "second_estop_contact_block_size": _equipment_box_assertion("second_estop_contact_block_size", "second_estop_link",
                                                                                "placeholder_second_estop_contact_block"),
+                   "second_estop_housing_size": _equipment_box_assertion("second_estop_housing_size", "second_estop_link",
+                                                                         "placeholder_second_estop_housing"),
                    "lift_flag_size": _equipment_box_assertion("lift_flag_size", "lift_flag_link", "placeholder_lift_flag"),
                    "head_camera_size": _equipment_box_assertion("head_camera_size", "head_camera_link", "placeholder_head_camera_body"),
                    "head_camera_bracket_foot_size": _equipment_box_assertion("head_camera_bracket_foot_size", "head_camera_bracket_link",

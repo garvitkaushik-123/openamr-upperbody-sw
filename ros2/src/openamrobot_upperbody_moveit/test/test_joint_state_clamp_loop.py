@@ -166,6 +166,6 @@ class TestProcessesAlive(unittest.TestCase):
 
 @launch_testing.post_shutdown_test()
 class TestShutdown(unittest.TestCase):
-    def test_clamp_processes_started_and_exited_cleanly(self, proc_info):
+    def test_clamp_processes_started_and_exited_cleanly(self, proc_info, proc_output):
         """move_group (and, with the clamp, joint_state_clamp.py) started, and nothing but move_group's known SIGSEGV at stop ended badly."""
-        assert_launch_healthy(proc_info, expected=EXPECTED_PROCESSES, allowed=MOVE_GROUP_ALLOWED)
+        assert_launch_healthy(proc_info, expected=EXPECTED_PROCESSES, allowed=MOVE_GROUP_ALLOWED, proc_output=proc_output)

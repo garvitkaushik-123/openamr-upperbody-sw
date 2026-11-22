@@ -1,29 +1,30 @@
 {
- "_comment": "Verbatim copy of the two model.js blocks the P-03 item 24 datums came from (datums.yaml revision 2026-11-01.a). Do not edit: refresh from openamrobot-docs with the new SHA when the docs model changes, and the datums with it.",
+ "_comment": "Verbatim copy of the two model.js blocks the P-03 item 24 datums came from, refreshed for P-03 rev20.4 item 28 (owner decisions of 8 Nov 2026; datums.yaml revision 2026-11-08.b). Do not edit: refresh from openamrobot-docs with the new SHA when the docs model changes, and the datums with it. Merged in openamrobot-docs as `commit` (#83, 10 Nov 2026); both blocks are byte-identical there and on docs main 86c706b.",
  "repository": "openAMRobot/openamrobot-docs",
- "commit": "cd780d6368625f4c653dfa287efc0688c37be82a",
- "identical_at": "7ae4a65215269b205838aca4cb1bd9ac2bed99b0",
+ "commit": "329a7bcee1f93530c97a57621719d482a399d11b",
+ "branch": "main",
+ "merged": true,
  "path": "docs/assets/roadmap/model/model.js",
  "blocks": {
-  "CHEST-JSON": "{\"second_estop\": {\"below_top\": 0.04, \"panel_ahead\": 0.048, \"glb_node\": \"estop\", \"glb_axis\": [0.39, 0.13, 0.0445]}, \"order\": [\"head_light\", \"getac_tablet\"], \"drawn\": {\"head_light\": {\"z\": 0.1326, \"size\": [0.02, 0.158, 0.017], \"window\": [0.148, 0.013]}, \"getac_tablet\": {\"z\": 0.246, \"size\": [0.0176, 0.234, 0.1498]}}, \"gap_light_tablet\": 0.03}",
-  "LIFT-JSON": "{\"face\": \"left\", \"z\": [0.12, 0.295, 0.47], \"stops\": [\"L1000\", \"L1175\", \"L1350\"], \"axis_off\": 0.015, \"sensor\": {\"d\": 0.012, \"len\": 0.048}, \"face_x\": -0.095, \"gap\": 0.002, \"flag\": [0.002, 0.045, 0.02], \"flag_off\": 0.005, \"flag_below_plate\": 0.41, \"rod\": {\"w\": 0.02, \"len\": 0.43, \"off\": 0.03}, \"bracket\": {\"leg\": 0.04, \"t\": 0.004, \"at\": 0.028}, \"bracket_h\": 0.025}"
+  "CHEST-JSON": "{\"second_estop\": {\"position\": \"adapter_top\", \"panel_above_plate\": 0.048, \"glb_node\": \"estop\", \"glb_axis\": [0.39, 0.13, 0.0445]}, \"order\": [\"head_light\", \"getac_tablet\"], \"drawn\": {\"head_light\": {\"z\": 0.0555, \"size\": [0.02, 0.158, 0.017], \"window\": [0.148, 0.013]}, \"getac_tablet\": {\"z\": 0.191, \"size\": [0.0176, 0.1498, 0.234], \"orientation\": \"portrait\"}}, \"gap_light_tablet\": 0.01}",
+  "LIFT-JSON": "{\"face\": \"rear\", \"z\": [0.12, 0.295, 0.47], \"stops\": [\"L1000\", \"L1175\", \"L1350\"], \"sensor\": {\"d\": 0.012, \"len\": 0.048}, \"rear_x\": -0.12, \"axis_x\": -0.148, \"face_y\": 0.024, \"gap\": 0.002, \"flag\": [0.045, 0.002, 0.02], \"flag_x\": [-0.183, -0.138], \"flag_y\": [0.026, 0.028], \"flag_below_plate\": 0.41, \"rod\": {\"w\": 0.02, \"len\": 0.43}, \"rod_x\": [-0.183, -0.163], \"rod_y\": [0.028, 0.048], \"corner_x\": [-0.163, -0.143], \"rod_clear\": 0.009, \"bracket\": {\"leg\": 0.04, \"t\": 0.004, \"at\": 0.028}, \"bracket_h\": 0.025, \"plate_rear_x\": -0.185}"
  },
  "sha256": {
-  "CHEST-JSON": "b3c2251f8d8e63ce3a1f9a2a049fdcbe5ffbefc33a4f2c5223e859cfb703d5d6",
-  "LIFT-JSON": "46013965a5e6967e471fcd38dfb147ffee6f3573a48ca66581a9bc4446fb1dee"
+  "CHEST-JSON": "97dadbcb7eb77f8428a5d74c95f9bcba736d95edac28feeb5ad686113d29d86a",
+  "LIFT-JSON": "c030c61cd5650c15441bf3e5cfea3bbb04988fbe3ed1876bf24b9fcd4a036118"
  },
  "head_camera_source": {
   "lines": {
-   "182": "    MOUNT_ABOVE_COL: .166, MOUNT_X: .18, PROFILE: {X: .12, Y: .06, L: .34, ADAPTER: .01, ADAPTER_W: .1}, MOUNT_Y: .031,",
-   "185": "    US_Y: .13, ZED_ABOVE_SH: .223, ZED_X: .222};  // ZED_X: lens 42 mm ahead of the shoulder (P-03 rev20.0 item 18, 28 Oct 2026)",
-   "489": "    var m = c + D.MOUNT_ABOVE_COL + D.ZED_ABOVE_SH, y = f + h.L, br = part(mov, 'head_camera_bracket');",
-   "490": "    box(br, .03, .03, .006, mats.alu, D.ZED_X - .03, 0, y + .003);",
-   "491": "    box(br, .012, .03, m - y, mats.aluDark, D.ZED_X - .03, 0, (y + m) / 2);",
-   "493": "    box(zed, .0265, .1245, .0305, mats.black, -.013, 0, 0);",
-   "727": "    zed.position.set(D.ZED_X, 0, D.PLATE_TOP + D.COL.RETRACTED + D.MOUNT_ABOVE_COL + D.ZED_ABOVE_SH);",
-   "728": "    zed.rotation.y = (o.headPitch === undefined ? 30 : o.headPitch) * Math.PI / 180;"
+   "196": "    MOUNT_ABOVE_COL: .166, MOUNT_X: .18, PROFILE: {X: .12, Y: .06, L: .34, ADAPTER: .01, ADAPTER_W: .1}, MOUNT_Y: .031,",
+   "199": "    US_Y: .13, ZED_ABOVE_SH: .223, ZED_X: .24};  // ZED_X: lens 60 mm ahead of the shoulder (owner decision 8 Nov 2026; 57 mm on 2 Nov, 42 mm in P-03 rev20.0 item 18)",
+   "505": "    var m = c + D.MOUNT_ABOVE_COL + D.ZED_ABOVE_SH, y = f + h.L, br = part(mov, 'head_camera_bracket');",
+   "506": "    box(br, .03, .03, .006, mats.alu, D.ZED_X - .03, 0, y + .003);",
+   "507": "    box(br, .012, .03, m - y, mats.aluDark, D.ZED_X - .03, 0, (y + m) / 2);",
+   "509": "    box(zed, .0265, .1245, .0305, mats.black, -.013, 0, 0);",
+   "866": "    zed.position.set(D.ZED_X, 0, D.PLATE_TOP + D.COL.RETRACTED + D.MOUNT_ABOVE_COL + D.ZED_ABOVE_SH);",
+   "867": "    zed.rotation.y = (o.headPitch === undefined ? 30 : o.headPitch) * Math.PI / 180;"
   },
-  "sha256": "41b5d2fa22faec8e44e552e443e4b7c34b70c1cab05bc9ac433179aec14f392d",
-  "_comment": "model.js has no JSON block for the head camera: these are its source lines (M.DIMS, upperBody() head_camera_bracket and zed box, M.build() zed pose and default pitch), verbatim, same commit"
+  "sha256": "322b973bd5e7d3ea5a52bcda260ef801e8ac0e1156f53054469493eb108ae163",
+  "_comment": "model.js has no JSON block for the head camera: these are its source lines (M.DIMS, upperBody() head_camera_bracket and zed box, M.build() zed pose and default pitch), verbatim, same source as the blocks"
  }
 }

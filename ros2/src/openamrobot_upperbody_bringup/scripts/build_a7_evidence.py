@@ -51,14 +51,14 @@ LIFT_STOPS = ("L1000", "L1175", "L1350")
 SIM_LIFT_STOP = "L1000"
 A7_CHECKS = [
     ("G01", "combined robot in Gazebo: arm controllers, arm goal, Nav2-facing topics unchanged"),
-    ("G02", "grippers close in Gazebo and finger_joint2 follows finger_joint1 in the physics (Bullet-Featherstone, passed explicitly)"),
+    ("G02", "grippers reach their goals in Gazebo and finger_joint2 follows finger_joint1 in the physics (Bullet-Featherstone, passed explicitly)"),
     ("M01", "named poses plan and execute on mock at every lift calibration stop (L1000, L1175, L1350), the lift planned to each stop with both "
             "arms in park (S8, issue #17)"),
     ("M02", "named poses plan and execute in Gazebo at the baseline configuration (lift_joint at L1000), the lift planned to L1175 and back "
             "with both arms in park (S8, issue #17)"),
     ("M03", "ACM: every disabled pair has a reason that can be shown (upstream-declared, Adjacent, ConstantTransform); every other pair is enabled"),
     ("M04", "a goal inside the nearest reachable structure volume (arm_profile_link) is rejected by planning (the base body is out of the arms' reach)"),
-    ("M05", "per-hand gripper values: closed is each hand's own far limit, opposite signs (ADR-009 point 5); the single-number version fails both ways"),
+    ("M05", "per-hand gripper values: open is each hand's own far limit, opposite signs, closed is 0 where the fingertips meet (ADR-009 point 5); the single-number and swapped-name versions fail"),
     ("M06", "named-pose plans need some acceleration limit and are insensitive to its value across three orders of magnitude (the limits stay placeholders)"),
     ("M07", "at rest in Gazebo no joint sits within the joint_rest_margin_rad datum of either of its limits (FAIL; WARN for the joints whose rest pose is an "
             "upstream limit; a non-finite reading is a FAIL; lift_joint and the mimic finger_joint2s are not measured, and say why)"),
@@ -293,7 +293,7 @@ def limitations(sidecars):
         "the gripper controller is still the deprecated position_controllers/GripperActionController serving GripperCommand (option 1 of "
         "ADR-009 point 4): this report does not choose between the three gripper interfaces (manipulation#11)",
         "G02 and M02 pass the Bullet-Featherstone engine explicitly; sim.launch.py defaults to DART, the engine platform-sw tuned the base on, on "
-        "which a closed gripper pose does not close. The base's contact behaviour was compared on neither engine",
+        "which an open gripper pose is not reached. The base's contact behaviour was compared on neither engine",
         "the arms' position interface in gz_ros2_control is a velocity servo, so a final error under 0.01 rad in M02 says nothing about the real "
         "arm's controller, gains, compliance or latency",
         "MoveIt 2.12.4 refuses a start state any amount outside a joint limit ('Joint ... from the starting state is outside bounds by'), and a "

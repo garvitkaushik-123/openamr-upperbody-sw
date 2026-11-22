@@ -5,62 +5,36 @@
     source /opt/ros/jazzy/setup.bash && source <workspace>/install/setup.bash
     python3 tools/report_equipment_collisions.py [--json out.json]
 
-For bp000 and bp050, for the tablet in landscape (the model) and in portrait (P-03 rev20.2 item 26, never drawn), and at the lift stops
+For bp000 and bp050, with the tablet as the model draws it (portrait on a fixed mount, the only position since P-03 rev20.4 item 28), and at the lift stops
 L1000 / L1175 / L1350, it checks every pair (moving equipment link, arm link) for collision in the default state and in every named arm
 pose of the SRDF (both arms in the same named pose, grippers at their defaults). The SRDF's disabled list is not consulted: the scene's
 own allowed-collision matrix forbids exactly the pairs under test (openamrobot_upperbody_moveit.acm_scene).
 
 It changes nothing and decides nothing: a collision is reported with its pair and configuration, and no part is moved to clear it.
 
-Portrait is a report-only datum (getac_tablet_portrait_size). Its pivot is NOT stated (datum getac_tablet_portrait_pivot is null); this
-report assumes the portrait box has the landscape box's centre, and says so in its output. That is an assumption of the report, not a datum.
+Until P-03 rev20.4 item 28 (owner decisions of 8 Nov 2026) the report also ran a portrait variant of a landscape model, with an assumed pivot;
+the rotatable mount is withdrawn, the model is portrait, and that variant and its assumption are gone.
 Exit status: 0 whatever was found (it is a report), 2 when it could not run.
 """
 import argparse
-import copy
 import json
 import os
 import subprocess
 import sys
 import tempfile
 
-MOVING_EQUIPMENT = ["getac_tablet_link", "head_light_link", "lift_flag_rod_link", "lift_flag_link", "head_camera_link", "head_camera_bracket_link"]
+MOVING_EQUIPMENT = ["getac_tablet_link", "head_light_link", "lift_flag_rod_link", "lift_flag_link", "head_camera_link", "head_camera_bracket_link",
+                    "second_estop_link"]   # on the moving adapter plate since P-03 rev20.4 item 28
 BASE_PLATES = ["bp000", "bp050"]
-ORIENTATIONS = ["landscape", "portrait"]
-PIVOT_ASSUMPTION = ("portrait box centred where the landscape box is centred (pivot not stated: datum getac_tablet_portrait_pivot is null); "
-                    "the head light stays at its landscape position")
+ORIENTATIONS = ["portrait"]          # the model's only tablet position (fixed mount, P-03 rev20.4 item 28)
 
 
 def worker(base_plate, orientation, out_path):
     """One MoveItPy per process (a MoveItPy that is torn down segfaults): leaves with os._exit."""
     import xml.etree.ElementTree as ET
 
-    import moveit_configs_utils
-    import yaml
-    from ament_index_python.packages import get_package_share_directory
     from openamrobot_upperbody_moveit.acm_scene import open_scene
     from openamrobot_upperbody_moveit.moveit_config import lift_stops
-
-    share = get_package_share_directory("openamrobot_upperbody_description")
-    datums_file = os.path.join(share, "config", "datums.yaml")
-    if orientation == "portrait":
-        with open(datums_file) as f:
-            doc = yaml.safe_load(f)
-        doc = copy.deepcopy(doc)
-        land = doc["datums"]["getac_tablet_size"]["value"]
-        port = doc["datums"]["getac_tablet_portrait_size"]["value"]
-        doc["datums"]["getac_tablet_size"]["value"] = list(port)
-        # the head light does not move with the tablet: its height derives from the tablet's bottom edge, so the gap is shifted by the
-        # change of half-height to keep the head light where the landscape model has it (a negative gap is an overlap)
-        doc["datums"]["head_light_gap_below_tablet"]["value"] -= (port[2] - land[2]) / 2
-        datums_file = os.path.join(tempfile.mkdtemp(), "datums_portrait.yaml")
-        with open(datums_file, "w") as f:
-            yaml.safe_dump(doc, f)
-        original = moveit_configs_utils.MoveItConfigsBuilder.robot_description
-
-        def with_datums(self, file_path=None, mappings=None):
-            return original(self, file_path=file_path, mappings={**(mappings or {}), "datums_file": datums_file})
-        moveit_configs_utils.MoveItConfigsBuilder.robot_description = with_datums
 
     with open_scene(base_plate, node_name=f"equipment_report_{orientation}") as scene:
         arm_links = [n for n in scene.link_names if n.startswith(("openarm_left_", "openarm_right_"))]
@@ -120,7 +94,6 @@ def main(argv=None):
                 with open(out) as f:
                     results.append(json.load(f))
     print("P-03 item 24 moving equipment vs both arms, six V01 configurations (REPORT ONLY; nothing moved to clear a collision)")
-    print(f"portrait: {PIVOT_ASSUMPTION}")
     for result in results:
         print(f"\n{result['orientation']} {result['base_plate']}: tablet box {result['tablet_box']}, {result['pairs_checked']} pairs "
               f"({len(MOVING_EQUIPMENT)} moving equipment links x {len(result['arm_links'])} arm links)")
@@ -131,7 +104,7 @@ def main(argv=None):
         print(f"  control {result['control']['pair']}: colliding={result['control']['colliding']}")
     if args.json:
         with open(args.json, "w") as f:
-            json.dump({"pivot_assumption": PIVOT_ASSUMPTION, "results": results}, f, indent=1)
+            json.dump({"results": results}, f, indent=1)
     return 0
 
 

@@ -362,11 +362,11 @@ class TestProcessesAlive(unittest.TestCase):
 
 @launch_testing.post_shutdown_test()
 class TestShutdown(unittest.TestCase):
-    def test_g01_processes_started_and_exited_cleanly(self, proc_info):
+    def test_g01_processes_started_and_exited_cleanly(self, proc_info, proc_output):
         """The processes of the launch started, and none ended with a code that is neither 0 nor a documented shutdown behaviour (launch_guard.py)."""
         from sim_test_support import amend_g_sidecar as _amend
         assert_launch_healthy(proc_info, expected=EXPECTED_PROCESSES, allowed=SIM_ALLOWED,
-                              record=lambda records: _amend("G01", "gazebo_smoke", "process_exits", records))
+                              record=lambda records: _amend("G01", "gazebo_smoke", "process_exits", records), proc_output=proc_output)
 
     def test_g01_no_gz_server_of_this_run_survives_the_teardown(self):
         """P16: as in G02. A natural orphan was seen after G01's launch in the second evidence pass of P16 (partition g01_*): it ran for the

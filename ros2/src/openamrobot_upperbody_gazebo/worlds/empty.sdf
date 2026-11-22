@@ -10,12 +10,18 @@
     SceneBroadcaster  the GUI's view of the scene
     Sensors        the base camera and lidar of platform-sw (ogre2); the model is not usable for navigation without it
 
-  1 ms steps at real time factor 1, the same physics block as platform-sw's walled_world.sdf.
+  Steps of 1/1500 s (0.00066667 s) at real time factor 1. platform-sw's walled_world.sdf steps at 1 ms; this world steps finer so
+  that the arm controllers really run at the upstream rate. gz_ros2_control updates the controllers on the first physics step at
+  which one controller period has passed. The simulation asks for 750 Hz (openamrobot_upperbody_control config/sim_overlay.yaml),
+  a period of 1.333333 ms: with 1 ms steps that is every second step, 500 Hz by the arithmetic (499.5 Hz measured), and with this step
+  it is every second step of 0.66667 ms, 750 Hz by the arithmetic (743.6 Hz measured by message count, most common interval 1.333 ms). The step is written a hair above 1/1500 s so that two steps are never short of the period
+  after rounding to nanoseconds. test_sim_control_rate.py holds the arithmetic. A world with 1 ms steps still works; its arm
+  controllers then update at 500 Hz.
 -->
 <sdf version="1.6">
   <world name="empty">
-    <physics name="1ms" type="ignored">
-      <max_step_size>0.001</max_step_size>
+    <physics name="1500hz" type="ignored">
+      <max_step_size>0.00066667</max_step_size>
       <real_time_factor>1.0</real_time_factor>
     </physics>
     <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>

@@ -3,7 +3,8 @@
 CHEST-JSON and LIFT-JSON values of openamrobot-docs model.js that the P-03 item 24 datums came from, within 0.5 mm.
 
 The model.js blocks are a verbatim fixture (test/fixtures/docs_model_item24.json, with the docs commit and a hash of each block), because CI
-has no checkout of openamrobot-docs. To compare with a live model.js, run the tool with --model-js (no skipped test stands in for it). Keys
+has no checkout of openamrobot-docs. The fixture of P-03 rev20.4 item 28 (8 Nov 2026) matches docs main at the
+#83 merge 329a7bc (the fixture says so: `merged: true`). To compare with a live model.js, run the tool with --model-js (no skipped test stands in for it). Keys
 the URDF cannot carry are listed by the tool (NOT_EXPORTED) and are the only ones not compared.
 """
 import hashlib
@@ -85,7 +86,8 @@ def test_item24_the_export_of_the_urdf_equals_the_docs_model_blocks(base_plate):
 def test_item24_the_head_camera_extractor_reads_the_docs_drawing():
     """The model.js values the head-camera datums came from, read by the extractor from the verbatim source lines."""
     docs = exporter.docs_head_camera(head_camera_source())
-    assert docs == {"ZED_X": 0.222, "ZED_ABOVE_SH": 0.223, "MOUNT_ABOVE_COL": 0.166, "pitch_deg": 30.0,
+    # ZED_X 0.240: the lens 60 mm ahead of the shoulder (P-03 rev20.4 item 28, 8 Nov 2026; was 0.222, 42 mm, P-03 rev20.0 item 18)
+    assert docs == {"ZED_X": 0.24, "ZED_ABOVE_SH": 0.223, "MOUNT_ABOVE_COL": 0.166, "pitch_deg": 30.0,
                     "body": {"size": [0.0265, 0.1245, 0.0305], "x": -0.013},
                     "bracket": {"back": 0.03, "foot": [0.03, 0.03, 0.006], "post": [0.012, 0.03]}}
     with pytest.raises(ValueError):
@@ -103,5 +105,7 @@ def test_item24_the_comparison_can_fail():
 
 
 def test_item24_the_tool_skips_only_what_the_urdf_cannot_carry():
+    # LIFT-JSON corner_x (the rod's corner bracket, drawn by the docs model since owner correction A6, P-03 rev20.4 item 28) is not modelled
     assert exporter.NOT_EXPORTED == {"CHEST-JSON": ["second_estop.glb_node", "second_estop.glb_axis", "drawn.head_light.window"],
-                                     "LIFT-JSON": [], "HEAD-CAMERA": []}
+                                     "LIFT-JSON": ["corner_x"], "HEAD-CAMERA": []}
+    assert exporter.FROM_DATUM == {}, "every exported value is read from the URDF"

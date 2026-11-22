@@ -10,7 +10,7 @@
 # installed plugin; the choice is Om's and Adnan's.
 #
 # ONE VALUE PER HAND (ADR-009 point 5): the two grippers take opposite-signed GripperCommand positions, left [0, 0.7854] and right
-# [-0.7854, 0], so nothing below, and nothing that uses these controllers, may close both hands from one number. The SRDF's
+# [-0.7854, 0], so nothing below, and nothing that uses these controllers, may open both hands from one number (zero is the closed hand; the far end of each range is the open hand). The SRDF's
 # gripper states are written per hand and test_gripper_sign.py fails the single-number version.
 
 moveit_controller_manager: moveit_simple_controller_manager/MoveItSimpleControllerManager

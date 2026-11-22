@@ -54,7 +54,7 @@ ros2 launch openamrobot_upperbody_bringup moveit.launch.py [base_plate:=bp000] [
 | `sim` | `mock` | `mock`: `mock.launch.py`, a stub for the wheel joints, then `move_group`. `gazebo`: the gazebo package's `sim.launch.py`, then `move_group` on the simulator's clock |
 | `rviz` | `false` | RViz2 with the MotionPlanning display (`openamrobot_upperbody_moveit/config/moveit.rviz`). With `sim:=gazebo` it replaces the simulator's own RViz |
 | `headless` | `false` | `sim:=gazebo` only: `true` runs `gz sim -s`, as the checks do |
-| `physics_engine` | empty | `sim:=gazebo` only, passed to `sim.launch.py`. Empty means that launch's own default, **DART**, on which a `closed` gripper pose may not close. Pass `gz-physics-bullet-featherstone-plugin` for the grippers to close (M02 does) |
+| `physics_engine` | empty | `sim:=gazebo` only, passed to `sim.launch.py`. Empty means that launch's own default, **DART**, on which an `open` gripper pose may not be reached. Pass `gz-physics-bullet-featherstone-plugin` for the grippers to move (M02 does) |
 
 `base_joint_states_stub.py` publishes the base's two wheel joints at zero on `/joint_states`, for `mock` only: the base is not under
 `ros2_control` (ADR-003), so nothing there reports them and MoveIt would warn every second that the robot's state is incomplete. The base
@@ -76,7 +76,7 @@ there, not here.
 to `L1175` and back), the twelve poses there, then the lift planned back to `L1000`. A lift goal is sent only between the stops and only with
 both arms reading `park`: the register LIFT rule as scenario design, not an interlock. Every lift and park move must succeed too (lift final
 error under 2 mm). Then they
-send every SRDF named pose to `move_group` (both arms: `hands_up`, `home`, `hands_up`, `park`; both grippers: `closed`, `open`, each with its
+send every SRDF named pose to `move_group` (both arms: `hands_up`, `home`, `hands_up`, `park`; both grippers: `open`, `closed`, each with its
 own value), which plans and executes through the trajectory execution manager into the real controllers, and require a **final joint error
 under 0.01 rad** after a one second settle. The record (a sidecar per run) holds every pose's outcome, planning and wall time and error, and
 the joint-state clamp's counters (see the MoveIt package README, "The joint-state clamp": MoveIt refuses a start state any amount past a limit,

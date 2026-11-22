@@ -20,6 +20,7 @@ group that is still a placeholder, and disappears by itself on the day every gro
 import fnmatch
 import os
 import warnings
+import pytest
 import xml.etree.ElementTree as ET
 
 from conftest import MATRIX, SHARE, expand, load_datums, load_yaml, write_sidecar
@@ -31,7 +32,7 @@ GROUPS = [  # key, label, what the number is (its provenance STATE is read from 
     ("base", "base (platform-sw)", "platform-sw CAD export"),
     ("lift", "lift (ours)", "catalogue mass (lift_mass_dold_v4_350) on a placeholder box"),
     ("openarm", "openarm_* (upstream)", "upstream nominal, arms + grippers, no body (ADR-008)"),
-    ("sensors", "sensors (ours)", "upper-sensor frames carry no <inertial> by design"),
+    ("sensors", "sensors (ours)", "ZED Mini with its mount and the wrist cameras, from the roadmap export"),
     ("equipment", "equipment (item 24)", "supplier masses (getac_tablet_mass, head_light_mass) on boxes"),
     ("equipment_no_mass", "equipment, no mass", "item 24 parts with no stated mass carry no <inertial>"),
     ("unclassified", "unclassified", "massed links not in the frame contract"),
@@ -383,7 +384,7 @@ def test_t10_mass_provenance_the_real_map_is_valid_and_says_what_the_design_says
     provenance, datums = load_provenance(), load_datums()["datums"]
     assert provenance_problems(provenance, datums) == []
     assert {g: provenance[g]["state"] for g in MASS_GROUPS} == {
-        "base": "external_nominal", "lift": "external_nominal", "openarm": "external_nominal", "sensors": "placeholder",
+        "base": "external_nominal", "lift": "external_nominal", "openarm": "external_nominal", "sensors": "external_nominal",
         "equipment": "external_nominal", "equipment_no_mass": "placeholder"}
     assert not groups_in_state(provenance, "verified"), "nothing is measured yet; a verified group needs its document first"
 
@@ -391,11 +392,11 @@ def test_t10_mass_provenance_the_real_map_is_valid_and_says_what_the_design_says
 def test_t10_with_the_current_tree_the_caveat_and_the_external_nominal_line_appear():
     lines, _ = _report()
     assert "  (F2S vehicle estimate 93 kg \u2014 per-link masses still placeholders)" in lines
-    assert any(line.startswith("  placeholder groups") and line.endswith("sensors, equipment_no_mass") for line in lines)
-    assert any(line.startswith("  external_nominal groups") and line.endswith("base, lift, openarm, equipment") for line in lines)
+    assert any(line.startswith("  placeholder groups") and line.endswith(": equipment_no_mass") for line in lines)
+    assert any(line.startswith("  external_nominal groups") and line.endswith("base, lift, openarm, sensors, equipment") for line in lines)
     row = {name: line for line in lines for _, name, _ in GROUPS if line.startswith(f"  {name} ")}
     assert "[external_nominal]" in row["base (platform-sw)"] and "[external_nominal]" in row["lift (ours)"]
-    assert "[external_nominal]" in row["openarm_* (upstream)"] and "[placeholder]" in row["sensors (ours)"]
+    assert "[external_nominal]" in row["openarm_* (upstream)"] and "[external_nominal]" in row["sensors (ours)"]
     assert "[external_nominal]" in row["equipment (item 24)"] and "[placeholder]" in row["equipment, no mass"]
 
 
@@ -480,9 +481,13 @@ def test_t10_mass_datums_are_the_ones_the_xacro_reads():
         for name in names:
             assert name in datums and name in referenced, f"{group}: {name} is not a datum the xacro reads"
     assert {g for g, entry in provenance.items() if entry.get("datum")} == set(MASS_DATUMS)
-    root = expand()
+    root = expand(roadmap_masses="false")   # the datum path: the lift datum on one box
     kg, links = mass_by_group(root)
     lift_mass = float(datums["lift_mass_dold_v4_350"]["value"])
     assert lift_mass == 11.7
     assert any(abs(float(l.find("inertial/mass").get("value")) - lift_mass) < 1e-9
                for l in root.findall("link") if l.get("name") in links["lift"]), "no lift link carries lift_mass"
+    # the default (roadmap export): the same 11.7 kg, split once into the static and the moving share
+    export = load_yaml(os.path.join(SHARE, "config", "roadmap_mass_export.yaml"))
+    dold = [i["mass_kg"] for g in export["groups"].values() for e in g["links"].values() for i in e["items"] if i["bom"].startswith("MEC-018")]
+    assert len(dold) == 2 and sum(dold) == pytest.approx(lift_mass, abs=0.002)

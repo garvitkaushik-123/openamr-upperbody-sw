@@ -63,16 +63,62 @@ def process_exit_records(proc_info):
     return sorted(records, key=lambda r: r["process"])
 
 
-def assert_launch_healthy(proc_info, expected, allowed=None, record=None):
+# upperbody-sw #48: move_group's -11 is allowed ONLY as the teardown crash it was documented as. In every A7 run looked at (7 of 7 in hosted run
+# 42527494905, 1 of 1 in the local M02 reproduction of 10 Nov 2026) the process first logs rclcpp's `signal_handler(SIGINT/SIGTERM)` (the launch
+# stopping it) and the backtrace then runs through `moveit_cpp::MoveItCpp::~MoveItCpp()`. A -11 without the signal line before it, or with a backtrace
+# that does not go through that destructor, is a crash while running and fails the check, whatever the allowance says.
+TEARDOWN_SIGNAL_LINE = "signal_handler(SIGINT/SIGTERM)"
+TEARDOWN_DESTRUCTOR = "MoveItCpp::~MoveItCpp"
+BACKTRACE_MARK = "Segmentation fault"
+
+
+def segv_is_teardown(output_text):
+    """(ok, reason) for one process's captured output, the stdout and stderr in the order they arrived. Pure."""
+    signal_at = output_text.find(TEARDOWN_SIGNAL_LINE)
+    if signal_at < 0:
+        return False, f"no '{TEARDOWN_SIGNAL_LINE}' line: it was not stopped by the launch when it crashed"
+    crash_at = output_text.find(BACKTRACE_MARK)
+    if crash_at >= 0 and crash_at < signal_at:
+        return False, "the segmentation fault comes before the SIGINT handler line: a crash while running"
+    if crash_at >= 0 and TEARDOWN_DESTRUCTOR not in output_text[signal_at:crash_at + len(BACKTRACE_MARK)]:
+        return False, f"the backtrace after the SIGINT does not go through {TEARDOWN_DESTRUCTOR}"
+    return True, "teardown"
+
+
+def process_output_text(proc_output, name):
+    """All captured output of the process called `name` (an IoHandler as launch_testing passes to a post-shutdown test), decoded."""
+    try:
+        events = proc_output[name]
+    except (KeyError, IndexError):        # a process that printed nothing has no entry
+        return ""
+    return "".join(e.text.decode(errors="replace") if isinstance(e.text, bytes) else str(e.text) for e in events)
+
+
+def assert_move_group_segv_is_teardown(proc_info, proc_output):
+    """Fail for every move_group whose exit code is -11 and whose own output does not show the teardown crash (segv_is_teardown)."""
+    bad = []
+    for record in process_exit_records(proc_info):
+        if record["process"].startswith("move_group") and record["exit_code"] == SIGSEGV:
+            ok, reason = segv_is_teardown(process_output_text(proc_output, record["process"]))
+            if not ok:
+                bad.append(f"{record['process']} exited with -11: {reason}")
+    assert not bad, "move_group crashed outside teardown: " + "; ".join(bad)
+
+
+def assert_launch_healthy(proc_info, expected, allowed=None, record=None, proc_output=None):
     """Fail if a process in `expected` (name prefixes) never started, or if any process that did start exited with a code that is neither 0 nor
     listed for it in `allowed` ({name prefix: [exit codes]}).
 
     `record(records)` (P24), when given, is called with `process_exit_records(proc_info)` BEFORE anything is asserted, so a launch that fails
     this check still leaves its exit codes in the evidence; it is how G01, G02, M01, M02 and M07 put them into their sidecars. It records and
-    judges nothing: no allowance was added by it."""
+    judges nothing: no allowance was added by it.
+
+    `proc_output` (upperbody-sw #48), when given, narrows move_group's SIGSEGV allowance to the teardown crash (assert_move_group_segv_is_teardown)."""
     allowed = allowed or {}
     if record is not None:
         record(process_exit_records(proc_info))
+    if proc_output is not None and any(SIGSEGV in codes for prefix, codes in allowed.items() if prefix.startswith("move_group")):
+        assert_move_group_segv_is_teardown(proc_info, proc_output)
     started = list(proc_info.process_names())
     never_started = [prefix for prefix in expected if not any(name.startswith(prefix) for name in started)]
     assert not never_started, f"processes that never started: {never_started} (the launch started {started})"

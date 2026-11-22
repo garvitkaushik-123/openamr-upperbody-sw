@@ -1,0 +1,163 @@
+# SPDX-License-Identifier: MIT
+# Software in the loop for the OpenArm arms: builds the real upstream driver (enactic/openarm_ros2 and enactic/openarm_can
+# at the commits of ros2/src/openamrobot_openarm_emulator/config/sil_pins.yaml) and this repository's motor emulator in
+# ROS 2 Jazzy, creates two Linux virtual CAN interfaces on the runner, and runs the emulator package's tests.
+# A test that needs vcan and cannot have it is BLOCKED: it is counted apart, and the job does not pass.
+# Simulation evidence only: never hardware, physical acceptance or safety evidence. No secrets, no hardware.
+name: OpenArm emulator tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PACKAGE: openamrobot_openarm_emulator
+  PACKAGE_DIR: ws/src/openamr-upperbody-sw/ros2/src/openamrobot_openarm_emulator
+  MODEL_PINS: ws/src/openamr-upperbody-sw/ros2/src/openamrobot_upperbody_description/config/upstream_pins.yaml
+
+jobs:
+  sil:
+    name: sil (vcan, real driver)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    concurrency:
+      group: openarm-emulator-${{ github.ref }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+    steps:
+      - uses: ros-tooling/setup-ros@649ef6bcd696da05bc27ceb3fab69d810c0daeab # 0.7.19
+        with:
+          required-ros-distributions: jazzy
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: ws/src/openamr-upperbody-sw
+          persist-credentials: false
+
+      - name: Read the pins
+        id: pins
+        run: |
+          python3 - "$PACKAGE_DIR/config/sil_pins.yaml" "$MODEL_PINS" >> "$GITHUB_OUTPUT" <<'EOF'
+          import re, sys, yaml
+          sil = yaml.safe_load(open(sys.argv[1]))["pins"]
+          model = yaml.safe_load(open(sys.argv[2]))["pins"]
+          values = {"openarm_ros2": sil["openarm_ros2"], "openarm_can": sil["openarm_can"],
+                    "openarm_description": sil["openarm_description"], "platform": model["openamr_platform_sw"]}
+          assert sil["openarm_ros2"] == model["openarm_ros2"], "the driver pin differs from the model's pin"
+          for key, value in values.items():
+              assert isinstance(value, str) and re.fullmatch(r"[0-9a-f]{40}", value), f"{key}: {value!r} is not a full hash"
+              print(f"{key}={value}")
+          EOF
+          cat "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: openAMRobot/openamr-platform-sw
+          ref: ${{ steps.pins.outputs.platform }}
+          path: ws/src/openamr-platform-sw
+          persist-credentials: false
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: enactic/openarm_description
+          ref: ${{ steps.pins.outputs.openarm_description }}
+          path: ws/src/upstream/openarm_description
+          persist-credentials: false
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: enactic/openarm_ros2
+          ref: ${{ steps.pins.outputs.openarm_ros2 }}
+          path: ws/src/upstream/openarm_ros2
+          persist-credentials: false
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: enactic/openarm_can
+          ref: ${{ steps.pins.outputs.openarm_can }}
+          path: ws/src/upstream/openarm_can
+          persist-credentials: false
+
+      # The vcan module is not in the runner's base kernel package; linux-modules-extra carries it. If it cannot be
+      # installed or loaded, setup_vcan.sh says BLOCKED, the tests that need vcan skip as BLOCKED, and Result fails the job.
+      - name: Virtual CAN interfaces
+        run: |
+          uname -r
+          sudo apt-get update
+          sudo apt-get install -y "linux-modules-extra-$(uname -r)" iproute2 can-utils || echo "linux-modules-extra-$(uname -r) could not be installed"
+          sudo modprobe vcan || echo "modprobe vcan failed"
+          set +e
+          sh "$PACKAGE_DIR/scripts/setup_vcan.sh" | tee vcan.txt
+          echo "VCAN_RC=${PIPESTATUS[0]}" >> "$GITHUB_ENV"
+          ip -details link show type vcan | tee -a vcan.txt
+          { echo '### Virtual CAN'; echo '```'; cat vcan.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: rosdep
+        working-directory: ws
+        run: |
+          source /opt/ros/jazzy/setup.bash
+          rosdep update --rosdistro jazzy
+          paths=$(colcon list --base-paths src --packages-up-to "$PACKAGE" --paths-only)
+          echo "$paths"
+          rosdep install --rosdistro jazzy --from-paths $paths --ignore-src -y
+
+      - name: Package versions
+        run: |
+          dpkg-query -W -f='${Package} ${Version}\n' \
+            | grep -E '^(ros-jazzy-(ros-base|rclcpp|ros-gz|gz-|ros2-control|controller-manager|hardware-interface|joint-trajectory-controller|xacro)|gz-|libgz-sim|linux-modules-extra)' \
+            | sort | tee versions.txt
+          { echo '### Package versions'; echo '```'; cat versions.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: colcon build
+        working-directory: ws
+        run: |
+          source /opt/ros/jazzy/setup.bash
+          colcon build --packages-up-to "$PACKAGE" --event-handlers console_cohesion+
+
+      - name: colcon test
+        working-directory: ws
+        run: |
+          source /opt/ros/jazzy/setup.bash
+          source install/setup.bash
+          set +e
+          colcon test --packages-select "$PACKAGE" --event-handlers console_direct+ --return-code-on-test-failure
+          echo "TEST_RC=$?" >> "$GITHUB_ENV"
+          colcon test-result --test-result-base "build/$PACKAGE" --verbose
+
+      # Test cases, not CTest entries: passed, failed, BLOCKED and skipped, from the JUnit XML.
+      - name: Test counts
+        if: always()
+        working-directory: ws
+        run: |
+          set +e
+          python3 "src/openamr-upperbody-sw/ros2/src/$PACKAGE/scripts/count_sil_tests.py" "build/$PACKAGE/test_results/$PACKAGE" \
+            --summary "$GITHUB_STEP_SUMMARY"
+          echo "COUNT_RC=$?" >> "$GITHUB_ENV"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: openarm-emulator-results
+          path: |
+            ws/build/openamrobot_openarm_emulator/test_results/
+            ws/build/openamrobot_openarm_emulator/Testing/
+            ws/log/latest_test/
+            vcan.txt
+            versions.txt
+          if-no-files-found: warn
+
+      - name: Result
+        if: always()
+        run: |
+          echo "setup_vcan.sh exit status: ${VCAN_RC:-not run} (0 interfaces up, 3 BLOCKED)"
+          echo "colcon test exit status:   ${TEST_RC:-not run}"
+          echo "test count exit status:    ${COUNT_RC:-not run} (0 pass, 1 a test failed or none ran, 3 BLOCKED)"
+          if [ "${COUNT_RC:-1}" = "3" ]; then echo "BLOCKED: tests that need vcan or the real driver could not run on this runner. Not a pass."; fi
+          [ "${TEST_RC:-1}" = "0" ] && [ "${COUNT_RC:-1}" = "0" ]

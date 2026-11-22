@@ -21,9 +21,10 @@ def test_named_poses_on_a_joint_limit_are_listed_with_their_distance():
     assert by[("left_arm", "home", "openarm_left_joint4")]["limit"] == "lower"
     assert ("left_arm", "park", "openarm_left_joint4") not in by and ("right_arm", "park", "openarm_right_joint4") not in by
     assert by[("lift", "L1000", "lift_joint")]["limit"] == "lower" and by[("lift", "L1350", "lift_joint")]["limit"] == "upper"
-    assert by[("right_gripper", "open", "openarm_right_finger_joint1")]["limit"] == "upper"
-    assert by[("left_gripper", "open", "openarm_left_finger_joint1")]["limit"] == "lower"
-    assert by[("left_gripper", "closed", "openarm_left_finger_joint1")]["limit"] == "upper"
+    assert by[("right_gripper", "closed", "openarm_right_finger_joint1")]["limit"] == "upper"
+    assert by[("left_gripper", "closed", "openarm_left_finger_joint1")]["limit"] == "lower"
+    assert by[("left_gripper", "open", "openarm_left_finger_joint1")]["limit"] == "upper"
+    assert by[("right_gripper", "open", "openarm_right_finger_joint1")]["limit"] == "lower"
     assert report["named_pose_joints_without_a_urdf_limit"] == []
 
 

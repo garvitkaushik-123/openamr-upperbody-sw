@@ -14,9 +14,9 @@ ros2 launch openamrobot_upperbody_gazebo sim.launch.py rviz:=true         # RViz
 | Argument | Default | |
 |---|---|---|
 | `column`, `base_plate`, `head_pitch`, `base_tilt` | `dold_v4_350`, `bp000`, `hp30`, `bt10` | option B's configuration IDs (its baseline) |
-| `world` | `worlds/empty.sdf` | path to any world; platform-sw's is `$(ros2 pkg prefix --share openamrobot_gazebo)/worlds/walled_world.sdf` |
+| `world` | `worlds/empty.sdf` (steps of 1/1500 s, see [the controller rate](#joint-dynamics-and-the-controller-rate)) | path to any world; platform-sw's is `$(ros2 pkg prefix --share openamrobot_gazebo)/worlds/walled_world.sdf` |
 | `headless` | `false` | `true` runs `gz sim -s` |
-| `physics_engine` | `gz-physics-dartsim-plugin` (DART) | applied to whatever world is loaded. DART is the engine platform-sw tuned the base on, and it **cannot close the grippers**: pass `gz-physics-bullet-featherstone-plugin` for that (G02 does). See [the engine](#the-physics-engine-and-the-gripper-mimic) |
+| `physics_engine` | `gz-physics-dartsim-plugin` (DART) | applied to whatever world is loaded. DART is the engine platform-sw tuned the base on, and it **cannot move the grippers**: pass `gz-physics-bullet-featherstone-plugin` for that (G02 does). See [the engine](#the-physics-engine-and-the-gripper-mimic) |
 | `rviz` | `false` | RViz2 with `config/sim.rviz` |
 
 Start-up takes about a minute on this machine (software rendering, real-time factor about 0.65). The five arm controllers go
@@ -51,6 +51,29 @@ installed path), and this package's world holds only the world systems (physics,
 This corrects the idea that the plugin loads "into the world"; ADR-003's boundary holds: arms on `gz_ros2_control`, base on its
 own plugin, in one model, with no conflict.
 
+## Joint dynamics and the controller rate
+
+Since 14 Nov 2026 the simulated OpenArm joints are no longer frictionless.
+
+- **Joint damping and friction.** The `gazebo` profile of the description carries `<dynamics damping friction>` on the eighteen movable
+  OpenArm joints, from the simulator dynamics profile (`openamrobot_upperbody_description/config/sim_dynamics/openarm_v2.yaml`, values
+  from upstream's MuJoCo model, each with its source). The description's README has the table. Rotor inertia (armature) is **not**
+  applied: URDF cannot carry it. `sim_dynamics:=off` on the xacro gives the old frictionless model for comparison; this launch has no
+  argument for it.
+- **Controller rate.** The launch hands `gz_ros2_control` the control package's `sim_overlay.yaml` after `arm_controllers.yaml`: the
+  controller manager runs at upstream's 750 Hz in the simulation (100 Hz before, and still 100 Hz on mock and real).
+- **World step.** `gz_ros2_control` updates the controllers on the first physics step at which one controller period has passed, so
+  the step has to divide the period. `worlds/empty.sdf` now steps at 1/1500 s (written 0.00066667 s). Measured here by counting
+  `joint_state_broadcaster` messages per second of simulated time: 499.5 Hz with 1 ms steps, 743.6 Hz with this step (the most common interval between updates is 1.333 ms; a short count window and lost messages put the count a little under 750). A world with
+  1 ms steps, platform-sw's `walled_world.sdf` included, still works and runs the arm controllers at 500 Hz. The finer step costs
+  simulation speed: on the machine this was written on the real-time factor went from about 0.5 to about 0.3. The base now steps finer
+  than the 1 ms platform-sw tuned its drive on; G01's drive and odometry checks pass on it.
+- **What this is not.** The position command interface of `gz_ros2_control` is still a velocity servo (gain 0.1), not the MIT
+  impedance law the real arm runs. Damping, friction and the rate bring the plant and the timing closer to upstream's; they do not
+  make tracking or contact forces transfer to the robot.
+
+`test/test_sim_control_rate.py` holds the step arithmetic and checks that the launch passes the overlay.
+
 ## `/joint_states`: what was observed, and what was chosen
 
 Two things want to publish joint states in this model, and the layout was decided after looking at what each really publishes.
@@ -62,7 +85,7 @@ Two things want to publish joint states in this model, and the layout was decide
   wall time at this real-time factor. Platform-sw's `gz_bridge.yaml` has that entry commented out, so with platform-sw's bridge
   alone the wheels' joint states never reach ROS; its own launch file publishes zeros for them with `joint_state_publisher`.
 - `joint_state_broadcaster` publishes the sixteen arm joints (`openarm_{left,right}_joint1..7` and `finger_joint1`; with the
-  finger mimic joints it reports `finger_joint2` as well when declared, which this tree does not) at 100 Hz of simulated time.
+  finger mimic joints it reports `finger_joint2` as well when declared, which this tree does not) at the controller manager's rate (100 Hz of simulated time when this was observed; 750 Hz since the simulation overlay of 14 Nov 2026).
 - **If both are put on `/joint_states`** (tried: the wheels bridged straight onto it, the broadcaster left alone): two publishers;
   in 5 s, 2486 messages carried the two wheels only and 249 carried the sixteen arm joints only, and not one message carried
   both. No joint is written twice, but a consumer sees a stream where ten messages in eleven describe two joints, and
@@ -81,7 +104,7 @@ The broadcaster is remapped onto `/arm/joint_states` by its spawner (`--controll
 which leaves `arm_controllers.yaml` untouched. Result, measured by G01: one publisher; 20 names in every message (2 wheels, 16
 arm joints, and the 2 `finger_joint2` joints, which `joint_state_publisher` computes from the URDF `<mimic>`), none twice,
 none reported by both sources. Cost: one more node, which uses about half a core here because of the wheel stream's rate, and
-a 50 Hz sampling of the arms' 100 Hz. Nothing of platform-sw's is edited.
+a 50 Hz sampling of the arms' stream. Nothing of platform-sw's is edited.
 
 ## `odom -> base_footprint`: one publisher
 
@@ -97,11 +120,14 @@ transform involves the `odom` frame, and `odom` is not a link of the description
 
 ## The physics engine and the gripper mimic
 
+A note on words (14 Nov 2026): the hand starts at 0, which is the **closed** hand, and a goal off zero **opens** it. Earlier text
+called such a goal "closing"; it now says "moving" or "reaching the goal". The measurements are unchanged.
+
 Measured with the simulator running (the P06 question: does `finger_joint2` follow `finger_joint1`?). **The launch defaults to DART**
 (decided 6 Oct, P10 task 0): it is the engine platform-sw tuned the base's DiffDrive on, a gripper-mimic convenience is not grounds
 to re-baseline someone else's physics, and the drive check compared kinematics, not contact. So the limitation is visible, not hidden
-behind a default: with the default engine the arms and the base work and the grippers do not close. G02 passes
-`physics_engine:=gz-physics-bullet-featherstone-plugin` explicitly and says why; anything that needs a gripper to close does the same.
+behind a default: with the default engine the arms and the base work and the grippers do not move. G02 passes
+`physics_engine:=gz-physics-bullet-featherstone-plugin` explicitly and says why; anything that needs a gripper to move does the same.
 
 | Engine | Gripper goal (`GripperCommand`) | `finger_joint2` | Gazebo says |
 |---|---|---|---|
@@ -128,9 +154,10 @@ sits between 1 and 5 (a velocity command too small for DART's solver, or a finge
 small velocities cannot leave, were not told apart), whether 5.0 is a good value (the gain is plugin-wide, so it applies to the
 arm joints too, which were not tried at it, and the finger oscillated), or anything about `finger_joint2`: with no mimic
 constraint on DART it is not driven and drifted freely (0.38 to 0.13 rad over about nine seconds), so the two-finger gripper still
-does not close symmetrically on DART and **G02 stays on Bullet-Featherstone**. The fingers' joints carry no `<dynamics>` element in
-the URDF (no damping or friction is declared; what the SDF conversion or DART adds was not looked at), so "high damping" is not a
-property of the description. This is a tuning finding for Kunal, who tuned platform-sw's DART setup; nothing is filed upstream, and
+does not move symmetrically on DART and **G02 stays on Bullet-Featherstone**. When this was measured the fingers' joints carried no
+`<dynamics>` element in the URDF (no damping or friction was declared; what the SDF conversion or DART adds was not looked at), so
+"high damping" was not a property of the description. Since 14 Nov 2026 the `gazebo` profile declares finger damping 0.6 N*m*s/rad and
+zero friction; the DART gain table above was not re-measured with it. This is a tuning finding for Kunal, who tuned platform-sw's DART setup; nothing is filed upstream, and
 sdformat's missing DART mimic constraint is documented behaviour. What was ruled out earlier (P09): whether `finger_joint2` is
 declared in `ros2_control`, whether the URDF `<mimic>` is present, the gripper controller type (a `JointTrajectoryController` on the
 finger behaves the same), `hold_joints`, and the left/right side.
@@ -161,7 +188,7 @@ which also writes the `gazebo` evidence report. Each test starts a headless serv
 | | Budget | Asserts |
 |---|---|---|
 | G01 | 90 s (about 35 s), default engine (DART) | five controllers `active`; an arm goal completes and tracks while the other arm and the base stay still; platform-sw's bridge topics exist by name and type; `/cmd_vel` moves the base and `/odom` reports it; one publisher of `odom -> base_footprint`; `/joint_states` has one publisher carrying wheels, arms and `lift_joint` once each |
-| G02 | 90 s (about 20 s), Bullet-Featherstone passed explicitly | both grippers close, and `finger_joint2` follows `finger_joint1` in the physics (link poses, not `/joint_states`) |
+| G02 | 90 s (about 20 s), Bullet-Featherstone passed explicitly | both grippers reach a goal off zero (they open part way), and `finger_joint2` follows `finger_joint1` in the physics (link poses, not `/joint_states`) |
 
 G02 and G01 also assert, after their launch has been torn down, that **no `gz sim` of their own `GZ_PARTITION` is still alive** (P16; M02 and
 M07, in the bringup package, ask the same through `stack_healthy(simulator=True)`): the ruby wrapper is what the launch owns and what the process
@@ -203,7 +230,9 @@ fails G02; a launch without the stop handler fails G02 (the canary above).
   running; the tests choose their own.
 - Stopping the launch with a signal to the `ros2 launch` process only (not Ctrl-C in its terminal) leaves the simulator
   running unless the shutdown handler could reach it; `pgrep -af 'gz sim'` shows what is left.
-- The model is spawned 0.15 m above the ground plane and settles in the first moment.
+- The model is spawned at its resting height, 0.002 m (the drive wheels' lowest point below `base_footprint`), so it is placed, not dropped.
+  `spawn_z:=<m>` overrides it for diagnosis only. At the old 0.15 m the landing pushed `lift_joint` past its lower stop before
+  `lift_controller` was active and failed A7 M02 (upperbody-sw #48); `a7_lift_settle_probe.py` in the bringup package records that.
 - `ros2 action send_goal` is slow while a simulator is running; read results against `/clock`, as the tests do.
 
 ## Not here

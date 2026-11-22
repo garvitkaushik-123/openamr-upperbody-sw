@@ -21,29 +21,33 @@ groups:
     source: "platform-sw's CAD export: the inertials of openamrobot_description's urdf, included unchanged"
     owner: platform-sw
     note: "Not verified by us, and not a datum (ADR-005: the base is platform-sw's). W01: KDL drops base_link's own inertia."
+    # Platform pin (upstream_pins.yaml openamr_platform_sw) is platform-sw main 8e7a454 (merge of platform-sw #93, 13 Nov 2026: ToF cliff pitch
+    # 10 deg). The base inertials are unchanged since the merge commit of platform-sw #126 (713574f, 10 Nov 2026), whose base links
+    # carry the reviewed roadmap export (openamrobot-docs main ff8ca57): base_link 49.948 kg, complete base 58.163 kg. The hub motor inertial
+    # there is a provisional approximation (owner decision 10 Nov 2026), valid for integration, not for dynamics acceptance.
   lift:
     state: external_nominal
-    source: "datum lift_mass_dold_v4_350: the DOLD Hexalift V4 350 catalogue mass, 11.7 kg (Alex, rev19.0, 12 Oct 2026), on a uniform-box inertial of the outer section (datum lift_column_section, 240 x 60 mm, DOLD datasheet page 4) at mid-height of the retracted column; the catalogue does not split the mass between the fixed part and the moving stage"
+    source: "roadmap model export (config/roadmap_mass_export.yaml, groups lift and lift_carriage; owner decision 8 Nov 2026, P-03 rev20.5 item 29 and rev20.6 item 30 A6): the DOLD Hexalift V4 350 catalogue 11.7 kg (datum lift_mass_dold_v4_350) split from the supplier STEP geometry and the materials into a static share on lift_column_base_link (outer profile, foot, drive) and a moving share on lift_carriage_link (inner profile, top cap, push tube), each with box inertias"
     owner: "Alex (F2S) for the figure; A6 (this repo) for the box"
     datum: lift_mass_dold_v4_350
-    note: "The mass is a supplier catalogue figure, not weighed here: another owner's number, not verified by us. The box it sits on is a model choice (a uniform box of the outer section, all of the mass on the fixed side), not the supplier's mass distribution; the datasheet (page 5) lists 11.7 kg for the V4, the same figure."
+    note: "The 11.7 kg is a supplier catalogue figure, not weighed here; the static and moving split is an estimate from dimensions and material (openamrobot-docs facts.yaml column.mass_split), not the supplier's distribution. lift_column_base_link also carries the stop sensors and brackets and the lift node; lift_carriage_link carries the adapter plate, arm profile, Getac mount, second E-stop, flag rod and flag. Every part once (mass_ledger.yaml). Design values, not weighed. With column tl3_400 the datum box applies (the export is the DOLD build)."
   openarm:
     state: external_nominal
     source: "upstream openarm_description's nominal link masses at the pinned commit (config/upstream_pins.yaml); arms and grippers, no body (ADR-008)"
     owner: "upstream:openarm_description"
     note: "A vendor nominal, not verified by us and not a measurement of the arms we will buy."
   sensors:
-    state: placeholder
-    source: "none for the wrist cameras: their frames carry no <inertial> by design. The head camera (head_camera_link) carries datum head_camera_mass, 0.0629 kg, the Stereolabs ZED Mini datasheet figure (the product page says 60 g)"
+    state: external_nominal
+    source: "roadmap model export: head_camera_link carries the ZED Mini (datum head_camera_mass, 0.0629 kg, Stereolabs datasheet) and its supplied mount ARM-011 (estimate); each wrist camera link carries its camera (ARM-004, estimate)"
     owner: "A6 (this repo)"
-    note: "Zero is a figure chosen so the model expands, so this group is a placeholder until the cameras are weighed. The head camera's datasheet mass is a supplier nominal, not weighed, and the wrist cameras still have none, so the group stays a placeholder."
+    note: "Supplier nominal and estimates, not weighed here."
   equipment:
     state: external_nominal
-    source: "datums getac_tablet_mass (Getac ZX80, 0.590 kg) and head_light_mass (Falcon FLDL-i150x15-W, at most 0.110 kg): supplier figures, each on a uniform box of its datum size (P-03 item 24)"
+    source: "roadmap model export: getac_tablet_link (Getac ZX80, 0.590 kg) and head_light_link (Falcon FLDL-i150x15-W, at most 0.110 kg), supplier figures at the roadmap positions; the fixed portrait mount UI-002 rides the carriage"
     owner: "Alex (P-03 item 24) for the figures; A6 (this repo) for the boxes"
     note: "Another owner's figures, not weighed here; the head light figure is an upper bound. The tablet's dock and mount are not modelled."
   equipment_no_mass:
     state: placeholder
     source: none
     owner: "A6 (this repo)"
-    note: "P-03 item 24 parts with no stated mass carry no <inertial>, so their modelled mass is zero: second_estop_link, lift_stop_sensor_l1000_link, lift_stop_sensor_l1175_link, lift_stop_sensor_l1350_link (sensors and brackets), lift_flag_rod_link, lift_flag_link, head_camera_bracket_link."
+    note: "These frames carry no <inertial>; their parts are counted once on the link they are fixed to (roadmap export): second_estop_link, lift_flag_rod_link, lift_flag_link on lift_carriage_link; lift_stop_sensor_l1000_link, lift_stop_sensor_l1175_link, lift_stop_sensor_l1350_link (sensors and brackets) on lift_column_base_link; head_camera_bracket_link on head_camera_link."

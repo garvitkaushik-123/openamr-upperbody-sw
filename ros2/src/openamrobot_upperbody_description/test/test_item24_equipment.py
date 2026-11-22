@@ -3,7 +3,9 @@
 
 What is pinned, on every base plate x arm package expansion:
   - the eight links exist, each on the parent the frame contract names, and on the right side of lift_joint (the tablet, the head light, the
-    flag rod and the flag move with the lift; the second E-stop and the three stop sensors are static);
+    second E-stop, the flag rod and the flag move with the lift; the three stop sensors are static). P-03 rev20.4 item 28 (owner decisions of
+    8 Nov 2026) moved the second E-stop from the static profile rear face to the moving adapter plate top (button up) and the stop sensors
+    from the left face to the rear face of the static column;
   - every pose equals the one computed HERE from the datums and option B's configuration (an independent restatement of the docs model's
     formulas, not a reading of the xacro): the chest in lift_carriage_link, the static parts in lift_column_base_link;
   - the three stop sensors are at 0.120 / 0.295 / 0.470 m above the column base, and at each calibration stop the flag is level with its sensor;
@@ -20,8 +22,9 @@ from conftest import MATRIX, SHARE, UPPERBODY, expand, load_datums, load_yaml
 from urdf_utils import fixed_fk, zero_pose_poses
 
 MOVING = {"getac_tablet_link": "arm_profile_link", "head_light_link": "arm_profile_link", "lift_flag_rod_link": "adapter_plate_link",
-          "lift_flag_link": "lift_flag_rod_link", "head_camera_bracket_link": "head_camera_mount_link"}
-STATIC = {"second_estop_link": "lift_column_base_link", "lift_stop_sensor_l1000_link": "lift_column_base_link",
+          "lift_flag_link": "lift_flag_rod_link", "head_camera_bracket_link": "head_camera_mount_link",
+          "second_estop_link": "adapter_plate_link"}           # P-03 rev20.4 item 28: on the moving plate (was lift_column_base_link)
+STATIC = {"lift_stop_sensor_l1000_link": "lift_column_base_link",
           "lift_stop_sensor_l1175_link": "lift_column_base_link", "lift_stop_sensor_l1350_link": "lift_column_base_link"}
 EQUIPMENT = {**MOVING, **STATIC}
 SENSOR_Z = {"L1000": ("lift_stop_sensor_l1000_link", "lift_stop_sensor_z_l1000", 0.120),
@@ -44,7 +47,8 @@ def path_to_root(root, link):
 
 
 def expected_poses():
-    """{link: (frame, xyz, yaw)} from the datums and option B's configuration only."""
+    """{link: (frame, xyz, yaw)} from the datums and option B's configuration only. The second E-stop is pitched, not yawed: its rotation is
+    checked in test_item24_the_second_estop_stands_on_the_adapter_plate_button_up, and it is left out here."""
     geo = UPPERBODY["geometry"]
     profile = geo["arm_profile"]
     column = UPPERBODY["column"][UPPERBODY["baseline"]["column"]]
@@ -52,25 +56,25 @@ def expected_poses():
     front = profile["center_x_from_column_axis"] + profile["size_x"] / 2 + v("chest_equipment_x_from_profile_front_face")
     tablet, light, flag = v("getac_tablet_size"), v("head_light_size"), v("lift_flag_size")
     tablet_z = v("getac_tablet_z_above_column_top")
-    flag_back = v("lift_stop_sensor_face_x") - v("lift_flag_gap") - flag[0]
+    # P-03 rev20.4 item 28 (owner correction A6): the sensors behind the column rear face, axes along y, sensing faces toward +y; the rod behind
+    # them, the flag on the rod's side face toward the sensors, its rear edge on the rod's rear face
+    axis_x, face_y = -sec_x / 2 - v("lift_stop_sensor_axis_behind_rear_face"), v("lift_stop_sensor_length") / 2
+    rod_w = v("lift_flag_rod_width")
+    rod_front = axis_x - v("lift_stop_sensor_diameter") / 2 - v("lift_flag_rod_clearance")
+    flag_y0 = face_y + v("lift_flag_gap")
     out = {
         "getac_tablet_link": ("lift_carriage_link", (front + tablet[0] / 2, 0.0, tablet_z), 0.0),
         "head_light_link": ("lift_carriage_link", (front + light[0] / 2, 0.0,
                                                    tablet_z - tablet[2] / 2 - v("head_light_gap_below_tablet") - light[2] / 2), 0.0),
-        "lift_flag_rod_link": ("lift_carriage_link", (flag_back - v("lift_flag_rod_width") / 2,
-                                                      sec_y / 2 + v("lift_flag_rod_offset_from_face") + v("lift_flag_rod_width") / 2, 0.0), 0.0),
-        "lift_flag_link": ("lift_carriage_link", (flag_back + flag[0] / 2, sec_y / 2 + v("lift_flag_offset_from_face") + flag[1] / 2,
-                                                  -v("lift_flag_below_plate")), 0.0),
-        "second_estop_link": ("lift_column_base_link", (-sec_x / 2 - v("second_estop_panel_behind_profile"), 0.0,
-                                                        column["retracted_length"] - v("lift_static_profile_top_below_column_top")
-                                                        - v("second_estop_below_profile_top")), np.pi),
+        "lift_flag_rod_link": ("lift_carriage_link", (rod_front - rod_w / 2, flag_y0 + flag[1] + rod_w / 2, 0.0), 0.0),
+        "lift_flag_link": ("lift_carriage_link", (rod_front - rod_w + flag[0] / 2, flag_y0 + flag[1] / 2, -v("lift_flag_below_plate")), 0.0),
     }
     lens_z = geo["arm_mount"]["z_above_column_top"] + geo["head_camera_lens"]["z_above_arm_mount"]
     lens_x = geo["arm_mount"]["x_from_column_axis"] + geo["head_camera_lens"]["x_ahead_of_arm_mount"]
     out["head_camera_bracket_link"] = ("lift_carriage_link", (lens_x - v("head_camera_bracket_x_behind_lens"), 0.0,
                                                               geo["adapter_plate_thickness"] + profile["length"]), 0.0)
     for link, datum, _ in SENSOR_Z.values():
-        out[link] = ("lift_column_base_link", (v("lift_stop_sensor_face_x"), sec_y / 2 + v("lift_stop_sensor_axis_from_face"), v(datum)), 0.0)
+        out[link] = ("lift_column_base_link", (axis_x, face_y, v(datum)), 0.0)
     return out
 
 
@@ -105,22 +109,63 @@ def test_item24_poses_equal_the_datums(base_plate, arm_package):
         assert pose[:3, :3] == pytest.approx(np.array([[np.cos(yaw), -np.sin(yaw), 0], [np.sin(yaw), np.cos(yaw), 0], [0, 0, 1]]), abs=1e-9), link
 
 
-def test_item24_chest_boxes_sit_on_the_profile_front_face_and_the_estop_block_on_the_profile_rear_face():
+def test_item24_chest_boxes_sit_on_the_profile_front_face():
     root = expand()
     profile = UPPERBODY["geometry"]["arm_profile"]
     front = profile["center_x_from_column_axis"] + profile["size_x"] / 2
     for link, size in (("getac_tablet_link", v("getac_tablet_size")), ("head_light_link", v("head_light_size"))):
         assert fixed_fk(root, "lift_carriage_link", link)[0, 3] - size[0] / 2 == pytest.approx(front), f"{link}: rear face off the profile face"
-    estop = fixed_fk(root, "lift_column_base_link", "second_estop_link")
-    block = root.find("link[@name='second_estop_link']/collision[@name='placeholder_second_estop_contact_block']")
-    bx = float(block.find("origin").get("xyz").split()[0])
-    size = float(block.find("geometry/box").get("size").split()[0])
-    inner_face = (estop @ np.array([bx - size / 2, 0, 0, 1]))[0]          # the block's face toward the column, in the column frame
-    assert inner_face == pytest.approx(-v("lift_column_section")[0] / 2), "the contact block does not stand on the profile rear face"
+    # P-03 rev20.4 item 28: the Getac is portrait only, on a fixed mount: 149.8 wide, 234 tall, 17.6 deep, centre 0.191 above the column top
+    assert v("getac_tablet_size") == [0.0176, 0.1498, 0.234] and v("getac_tablet_z_above_column_top") == 0.191
+    assert "getac_tablet_portrait_size" not in load_datums()["datums"] and "getac_tablet_portrait_pivot" not in load_datums()["datums"]
     # the head light's top edge is the gap below the tablet's bottom edge (gap_light_tablet of the docs model)
     t = fixed_fk(root, "lift_carriage_link", "getac_tablet_link")[2, 3] - v("getac_tablet_size")[2] / 2
     h = fixed_fk(root, "lift_carriage_link", "head_light_link")[2, 3] + v("head_light_size")[2] / 2
-    assert t - h == pytest.approx(v("head_light_gap_below_tablet")) == pytest.approx(0.030)
+    # P-03 rev20.4 item 28 (owner decisions of 8 Nov 2026): 10 mm, was 30 mm (P-03 rev20.0 item 24)
+    assert t - h == pytest.approx(v("head_light_gap_below_tablet")) == pytest.approx(0.010)
+    assert fixed_fk(root, "lift_carriage_link", "head_light_link")[2, 3] == pytest.approx(0.0555), "the docs model's head light z (CHEST-JSON)"
+
+
+@pytest.mark.parametrize("base_plate,arm_package", MATRIX, ids=IDS)
+def test_item24_the_second_estop_stands_on_the_adapter_plate_button_up(base_plate, arm_package):
+    """P-03 rev20.4 item 28 (owner correction A5): on the moving adapter plate top behind the arm post, above the column axis, centred in y,
+    button facing up, the contact block on the plate top inside the housing envelope. Was: on the static profile rear face, facing rearward."""
+    root = expand(base_plate=base_plate, arm_package=arm_package)
+    plate = fixed_fk(root, "lift_carriage_link", "adapter_plate_link")
+    plate_top = plate[2, 3] + UPPERBODY["geometry"]["adapter_plate_thickness"] / 2
+    estop = fixed_fk(root, "lift_carriage_link", "second_estop_link")
+    assert estop[:3, 3] == pytest.approx((0.0, 0.0, plate_top + v("second_estop_panel_above_plate")), abs=1e-12)
+    assert estop[:3, 0] == pytest.approx((0.0, 0.0, 1.0), abs=1e-12), "the button axis (+x of second_estop_link) does not point up"
+    assert estop[:3, 1] == pytest.approx((0.0, 1.0, 0.0), abs=1e-12)
+    profile = UPPERBODY["geometry"]["arm_profile"]
+    for name in ("placeholder_second_estop_contact_block", "placeholder_second_estop_housing"):
+        c = root.find(f"link[@name='second_estop_link']/collision[@name='{name}']")
+        cx = float(c.find("origin").get("xyz").split()[0])
+        size = [float(x) for x in c.find("geometry/box").get("size").split()]
+        bottom = (estop @ np.array([cx - size[0] / 2, 0, 0, 1]))[2]
+        assert bottom == pytest.approx(plate_top, abs=1e-12), f"{name}: does not stand on the adapter plate top"
+        rear, front = estop[0, 3] - size[2] / 2, estop[0, 3] + size[2] / 2      # z of the link is along the robot's x
+        assert front < profile["center_x_from_column_axis"] - profile["size_x"] / 2, f"{name}: reaches into the arm post"
+        assert rear > plate[0, 3] - v("adapter_plate_section")[0] / 2, f"{name}: overhangs the plate's rear edge"
+        assert size[1] / 2 <= v("adapter_plate_section")[1] / 2, f"{name}: overhangs the plate laterally"
+    housing = v("second_estop_housing_size")
+    for name in ("contact_block", "collar"):
+        size = v(f"second_estop_{name}_size")
+        assert size[1] <= housing[1] and size[2] <= housing[2], f"the {name} does not fit inside the housing envelope across"
+    assert v("second_estop_contact_block_size")[0] <= housing[0]
+
+
+def test_item24_the_stop_sensors_are_behind_the_column_rear_face_centred_in_y():
+    """P-03 rev20.4 item 28 (owner correction A6): rear face of the static column (it was the left face), sensor axes along y 28 mm behind the
+    rear face, centred in y, sensing faces toward +y (LIFT-JSON face rear, axis_x -0.148, face_y 0.024)."""
+    root = expand()
+    for link, _, _ in SENSOR_Z.values():
+        pose = fixed_fk(root, "lift_column_base_link", link)
+        assert pose[:2, 3] == pytest.approx((-0.148, 0.024), abs=1e-12), link
+        cyl = root.find(f"link[@name='{link}']/collision[@name='placeholder_lift_stop_sensor']")
+        centre = [float(x) for x in cyl.find("origin").get("xyz").split()]
+        assert centre == pytest.approx([0.0, -v("lift_stop_sensor_length") / 2, 0.0]), f"{link}: the body is not centred in y behind its face"
+        assert [float(x) for x in cyl.find("origin").get("rpy").split()] == pytest.approx([np.pi / 2, 0, 0]), f"{link}: the axis is not along y"
 
 
 @pytest.mark.parametrize("stop", sorted(SENSOR_Z))
@@ -178,7 +223,9 @@ def test_item24_no_equipment_joint_is_in_ros2_control_or_movable():
 
 # ---- head camera body (register HEAD-CAMERA-IDENTITY): the numbers below are the register's, written here on purpose, so a change of option B's
 # configuration or of the datums that moved the camera away from them fails this test instead of following along.
-HCI_LENS_AHEAD_OF_ARM_MOUNT = 0.042      # "lens 0.042 m ahead of and 0.223 m above the arm mount point, centred"
+# P-03 rev20.4 item 28 (owner decisions of 8 Nov 2026; register change openAMRobot/.github#90): the lens 0.060 m ahead of the arm mount
+# point, was 0.042 (P-03 rev20.0 item 18).
+HCI_LENS_AHEAD_OF_ARM_MOUNT = 0.060      # "lens 0.060 m ahead of and 0.223 m above the arm mount point, centred"
 HCI_LENS_ABOVE_ARM_MOUNT = 0.223
 HCI_BASELINE_PITCH_DEG = 30              # "pitch 15 to 35 degrees down in 5 degree steps about the lens line, baseline 30 degrees" (hp30)
 
@@ -208,7 +255,11 @@ def test_item24_the_head_camera_body_sits_at_the_head_camera_identity_pose(base_
         assert tuple(float(x) for x in element.find("geometry/box").get("size").split()) == pytest.approx(size)
         assert [float(x) for x in element.find("origin").get("xyz").split()] == pytest.approx([v("head_camera_body_x_from_lens_line"), 0, 0])
         assert [float(x) for x in element.find("origin").get("rpy").split()] == pytest.approx([0, 0, 0]), "the body pitches with the frame"
-    assert float(link.find("inertial/mass").get("value")) == pytest.approx(v("head_camera_mass")) == pytest.approx(0.0629)
+    # the ZED Mini (datum head_camera_mass) and its supplied mount ARM-011, counted once on head_camera_link (roadmap export, 8 Nov 2026)
+    export = load_yaml(os.path.join(SHARE, "config", "roadmap_mass_export.yaml"))
+    items = {i["bom"]: i["mass_kg"] for i in export["groups"]["sensors"]["links"]["head_camera_link"]["items"]}
+    assert items["ARM-003"] == pytest.approx(v("head_camera_mass"), abs=0.001) and v("head_camera_mass") == pytest.approx(0.0629)
+    assert float(link.find("inertial/mass").get("value")) == pytest.approx(sum(items.values()))
     # the body's centre in the carriage frame: on the lens line's plane, 13 mm behind the lens along the pitched optical axis
     centre = lens @ np.array([v("head_camera_body_x_from_lens_line"), 0, 0, 1])
     expected = lens[:3, 3] + _rot_y(HCI_BASELINE_PITCH_DEG) @ np.array([v("head_camera_body_x_from_lens_line"), 0, 0])

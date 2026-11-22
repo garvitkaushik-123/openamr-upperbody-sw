@@ -11,13 +11,14 @@
   The head camera is not here: option B declares head_camera_mount_link, head_camera_link and head_camera_optical_frame with
   sourced numbers (ZED Mini lens offset, head_pitch), and this file's former head_camera_pose placeholder is deleted.
 
-  Each camera link carries a small box VISUAL and no <collision> and no <inertial>: the box is a marker for where the
-  frame is, not a model of the sensor. Frame contract entries say collision_free: true with the reason.
+  Each camera link carries a small box VISUAL and no <collision>: the box is a marker for where the frame is, not a model
+  of the sensor. In the combined robot each wrist camera link carries the camera mass from the roadmap export (roadmap_inertial.xacro). Frame contract entries say collision_free: true with the reason.
 
   The parents of the wrist cameras are links of the upstream openarm_v20_robot macros, so this file must be instantiated
   after both calls.
 -->
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:include filename="$(find openamrobot_upperbody_description)/urdf/roadmap_inertial.xacro"/>
 
   <!-- <origin> from a datum pose {xyz: [x, y, z], rpy: [r, p, y]}. -->
   <xacro:macro name="openamr_origin_from_pose" params="pose">
@@ -32,6 +33,8 @@
 
   <xacro:macro name="openamr_camera_frames" params="name parent pose">
     <link name="${name}_link">
+      <!-- the wrist camera (BOM ARM-004) mass from the roadmap export when the combined robot gives it (8 Nov 2026) -->
+      <xacro:if value="${name + '_link' in roadmap_links}"><xacro:openamr_roadmap_inertial link="${name}_link"/></xacro:if>
       <visual>
         <geometry><box size="${openamr_sensor_marker_edge} ${openamr_sensor_marker_edge} ${openamr_sensor_marker_edge}"/></geometry>
       </visual>

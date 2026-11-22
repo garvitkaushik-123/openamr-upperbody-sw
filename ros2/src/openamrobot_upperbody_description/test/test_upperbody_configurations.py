@@ -71,7 +71,7 @@ def test_combination(combo):
             assert abs(t[2] - shoulder_z) < TOL, (side, q, t)
             assert all(abs(r[i][j] - (i == j)) < TOL for i in range(3) for j in range(3))
         r, cam = poses['head_camera_link']
-        assert abs(cam[0] - (axis_x + 0.180 + 0.042)) < TOL
+        assert abs(cam[0] - (axis_x + 0.180 + 0.060)) < TOL   # P-03 rev20.4 item 28 (8 Nov 2026); was 0.042 (P-03 rev20.0 item 18)
         assert abs(cam[1]) < TOL
         assert abs(cam[2] - (shoulder_z + 0.223)) < TOL
         assert cam[2] <= CONFIG['geometry']['max_assembled_height']

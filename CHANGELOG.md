@@ -5,6 +5,166 @@ All notable changes to this repository. Evidence for the description is static a
 
 ## [Unreleased]
 
+### Added (15 Nov 2026; OpenArm software in the loop on virtual CAN)
+
+- **New package `openamrobot_openarm_emulator`.** The unmodified upstream driver (`openarm_hardware/OpenArmHW`, enactic/openarm_ros2 `4e837e1`,
+  with enactic/openarm_can `bfd4e52`, tag 1.4.1) talks over Linux virtual CAN to emulated Damiao motors. One emulator per arm, each on its own
+  SocketCAN interface (`vcan_arm_l`, `vcan_arm_r`). Design input: the digital-twin audit of 28 Sep 2026 (openAMRobot/audits,
+  `digital-twin/openarm/openarm_interface.md`, section 5). Simulation only. No safety logic. The combined model is not changed.
+- **Frames.** The emulated motors answer enable, disable, set zero, clear error, MIT, position-velocity, velocity and position-force commands,
+  refresh, and parameter read, write and save, with the real state layout (position, velocity, torque, two temperatures, status or error code).
+  The codec is written independently and tested bit for bit against the upstream encoder and decoder.
+- **Motion from Gazebo through ros2_control.** Each emulator is a controller (`openamrobot_openarm_emulator/OpenArmCanEmulator`) in the
+  controller manager that `gz_ros2_control` hosts: it reads joint position and velocity, runs the MIT law and commands joint effort every physics
+  step. The Gazebo position servo is not used for the arms on this path.
+- **Timing.** A model of one shared bus per arm gives each frame its length in bits at 1 and 5 Mbit/s, one frame at a time, lowest id first.
+  Motor reply latency is a parameter and is 0 until it is measured.
+- **Fault injection:** CAN loss, single-motor timeout, over-voltage, over-temperature, E-stop power cut (bus up, motors silent, then reset), any
+  motor fault code, and a configurable supply voltage (25.6 to 29.2 V on the robot). Parameters of the emulator controllers; `inject_fault.py` sets them.
+- **Launch `sil.launch.py`:** creates the vcan interfaces (CAN FD with MTU 72 where the kernel allows, and it reports when not), starts Gazebo
+  with the combined model, both emulators, the real driver pinned by commit, and an example arm trajectory. The simulator's controller manager is
+  `/sim/controller_manager`; the real driver's is `/controller_manager`.
+- **Tests and CI.** `test_codec`, `test_motor_model`, `test_real_driver`, `test_package_static` and `test_sil_launch`, registered in the package's
+  CMakeLists.txt. New workflow `.github/workflows/openarm-emulator-tests.yml` builds the driver at the pins, creates vcan on the hosted runner and
+  runs them. A test that needs vcan or the driver and cannot have it is BLOCKED, counted apart, and the job does not pass.
+- **Driver behaviour recorded, not fixed** (the tests assert what upstream does today): every arm joint is driven to zero on activation, with a
+  step command first; the gripper is sent 0.044 rad on activation; `read()` and `write()` return OK on CAN loss, with the interface down and
+  during a power cut, with the state frozen; motor fault codes and temperatures are decoded and not acted on; after a power cut the motors are
+  only re-enabled by deactivating and activating the hardware component.
+- **Numerical damping treatment.** At a 1 ms physics step the MIT damping gain makes the light links chatter at torque saturation. The emulator
+  attenuates the part of its torque above 200 Hz as an implicit step of the damping term would, using each link's inertia from the URDF. Static
+  torque is unchanged. This is numerical, not a motor model; the package README says why.
+- **Assumptions.** Motor behaviour that no source in scope fixes (state after power-up, reply while disabled, fault thresholds, CAN timeout,
+  reply latency, speed at 25.6 to 29.2 V) is a parameter with a default, listed in the package README for bench measurement.
+### Added (14 Nov 2026; simulator dynamics for the OpenArm 2.0 joints, simulation only)
+
+Base: main `895ce34`. Inputs: audits `audit/2026-09-28` (`digital-twin/openarm/`, gaps 3, 6, 9 and 10 of `findings.md`). Simulation only:
+no safety logic, no firmware, no change to a joint limit, origin, axis, mass or inertia. The real-hardware profile expands to the same text as before.
+
+- **Simulator dynamics profile, kept apart from the kinematics** (`config/sim_dynamics/openarm_v2.yaml`, schema `sim_dynamics.schema.json`).
+  Per joint and gripper: damping, friction, armature, and a copy of the URDF effort and velocity limits, each with its source, the place in
+  that source and a status. The values are upstream's own simulator values, from its MuJoCo model of OpenArm 2.0 (`openarm_mujoco` `1daab06`,
+  `v2/openarm_bimanual.xml`): joints 1 and 2 damping 1.0 N*m*s/rad, friction 0.2 N*m, armature 0.016 kg*m^2; joints 3 and 4 0.9, 0.1, 0.030;
+  joints 5 to 7 0.9, 0.04, 0.002; fingers 0.6, 0, 0.002. `openarm_description` gives none: its `friction.yaml` is empty at the pin `14ff67b`
+  and at main `38c64af`. The Isaac Lab asset (`cb7ff75`) is the 1.0 hand and has no joint friction or armature. Nothing is estimated except
+  two cross-checks that are not applied (the rotor inertia each armature implies, and a fingertip force), each with its method.
+  None of it is a measurement of a delivered arm.
+- **Applied through xacro to the simulated outputs only.** New `urdf/sim_dynamics.xacro` and xacro arg `sim_dynamics` (`auto`, `on`, `off`).
+  `hardware_profile:=gazebo` now has `<dynamics damping friction>` on the sixteen controlled arm and gripper joints and on the two finger mimic
+  followers. `sim_dynamics:=on` gives the same for a MuJoCo-facing URDF. `hardware_profile:=real` has none, and `sim_dynamics:=on` with `real`
+  stops the expansion. `mock` has none by default. The upstream macros take no dynamics argument, so the file redefines the one upstream macro
+  that emits every joint's `<limit>`, with the same `<limit>` and the `<dynamics>` after it; with the eighteen lines removed the expansion
+  equals the one without them. Armature is not applied: URDF has no element for it and no link inertia is changed.
+- **Controller rate in the simulation: 750 Hz, upstream's rate for the real driver** (`openarm_ros2` `4e837e1`,
+  `openarm_bringup/config/controllers/openarm_bimanual_controllers.yaml`). New `openamrobot_upperbody_control/config/sim_overlay.yaml`, handed to
+  `gz_ros2_control` after `arm_controllers.yaml` through the new xacro arg `controllers_overlay_file` (a second `<parameters>`).
+  `arm_controllers.yaml` is unchanged: mock and real stay at 100 Hz. `gz_ros2_control` updates on whole physics steps, so
+  `openamrobot_upperbody_gazebo/worlds/empty.sdf` now steps at 1/1500 s (was 1 ms). Measured: 499.5 Hz with 1 ms steps, 743.6 Hz with the new
+  step (most common interval between updates 1.333 ms). The simulation runs slower for it. A world with 1 ms steps runs the arm controllers at 500 Hz.
+- **Gripper grip limit from the motor data**: 3.0 N*m, the rated torque of the gripper motor (rated current 2.5 A), in the profile and as
+  `max_effort` of both gripper controllers in the simulation overlay. It is carried on the command path and not enforced: the position
+  command interface ignores `max_effort` and the URDF effort limit (7 N*m, the motor's peak) is unchanged.
+- **Tests, registered in CMake**: `test_sim_dynamics_profile.py` (schema, a source and locator for every value, a method for every estimate,
+  full commit hashes, the pins equal `upstream_pins.yaml`, the joint list equals the model's, the limit copies equal the URDF's),
+  `test_sim_dynamics_urdf.py` (`<dynamics>` on all 16 arm and gripper joints in `gazebo`, none in `real`, nothing else moved),
+  `test_sim_overlay_yaml.py` (the overlay equals the profile and adds no controller), `test_sim_control_rate.py` (the world step gives 750 Hz).
+
+- **Not used by the software-in-the-loop launch (15 Nov 2026).** `openamrobot_openarm_emulator/launch/sil.launch.py` expands the model with
+  `sim_dynamics:=off`. It drives the joints by effort on 1 ms steps, where the profile's damping is stepped explicitly and is unstable
+  without the rotor inertia (damping times the step over the link inertia is up to 6.6; the limit is 2). Found by that package's CI on the
+  first merge of the two changes: an arm that should hold at zero read -1.33 rad. The position-servo simulation is not affected. A static
+  test recomputes the ratio and checks the launch.
+
+### Fixed (14 Nov 2026; gripper `open` and `closed` were swapped in the SRDF)
+
+- **`open` is now the far end of each hand's range (+0.7854 left, -0.7854 right) and `closed` is 0.** They were the other way round, so a
+  `closed` command opened the hand. Audit finding 6 holds. Evidence: upstream docs ("the closed position is used as zero by default"), the
+  upstream driver (`openarm_can`: "0=closed, 1=open"), the upstream MuJoCo model (ratio 0 closed, 1 fully open at the range end away from 0),
+  and this model's geometry: the fingertip collision meshes are 0.1 mm apart at 0 and 139 mm apart at the far end.
+- **M05 now ties the names to the geometry.** It asserted the swapped convention and so passed with the defect. It now measures the fingertip
+  gap on the expanded URDF (under 1 mm at `closed`, over 100 mm at `open`), fails the swapped names, and still fails the single-number
+  version in both directions. `named_poses.open_value` is the per-hand far limit; `closed_value` is 0.
+- **Test sequences keep the same motion under the right names**: the gripper sequence of M01, M02 and M06 is `open` then `closed` (was `closed`
+  then `open`): to the far end and back to 0, as before. Text that said "close" for moving the fingers now says "move" or "reach the goal".
+  Not changed: the joint limits, the sign per hand, the controllers. The motor sign per hand on the real gripper is still undocumented upstream.
+### Added (14 Nov 2026; night-shift actuator-ledger, proposal)
+
+- **Actuator and electrical ledger** `config/actuator_ledger.yaml` with `config/actuator_ledger.schema.json`: one entry per actuator or bus
+  node (2 x ZLLG80ASM250-L-B2 V1.01 hub motor, ZLAC8015D V4.2, DOLD Hexalift V4 350, CTL-017 lift node, Daly BMS, and the 8 OpenArm v2.0 motors
+  per arm including the gripper). Every value carries unit (SI), source, status and owner; unknown values are null with status `unknown` and
+  a note naming what closes them. Data only: no URDF, xacro, controller, firmware or launch file reads it, and `config_id` does not change.
+- **`test/test_actuator_ledger.py`**: schema validation, provenance of every value, and equality of the ledger's arm and lift limits with the
+  expanded combined URDF. Registered in `CMakeLists.txt` as `actuator_ledger`, so `colcon test` runs it.
+- **Hub motor values from the selected B2 V1.01 drawing** (platform-hw `8ed2b06`, `datasheets/ZLTech/wheel_ZLLG80ASM250`): part and revision, direct
+  drive, 5.5 / 16 N*m, 200 / 260 rpm, 6.5 / 19 A, 24 V. Rotor inertia, damping and friction stay unknown.
+
+### Changed (14 Nov 2026; platform pin to platform-sw main 8e7a454)
+
+- **Platform pin `713574f` -> `8e7a454`** (`config/upstream_pins.yaml`, README checkout line): the merge of platform-sw #93, decision NEAR-FIELD-FRAMES
+  (P-03 rev19.7 item 19 D6, register 20 Oct 2026). The only model change is the TF-Luna cliff sensor pitch, `tof_front` and `tof_rear` 20 -> 10 deg down
+  (`sensor_frames.yaml`, `sensors.xacro`). Neither link has collision geometry or an inertial, so the collision matrix (180 pairs), the masses and the
+  `roadmap_mass_export.yaml` copy are unchanged. The other platform-sw commit in the range (#121) changes tests only. Datums revision unchanged.
+  A6 and A7 rerun on this pin; the evidence report records platform-sw `8e7a454`. Register PLATFORM-PIN follows this pin once it is merged.
+
+### Changed (10 Nov 2026; P-03 rev20.6 item 30, upperbody-sw #48 follow-up)
+
+- **Lift fixing text: 260 x 30 mm foot tab holes, not 224 x 40 mm** (P-03 item 30 A3, decisions D-20 and D-21, superseding item 28). The lift is fixed to the
+  lift base plate MEC-019 through the four foot tab holes on the 260 x 30 mm pattern with 4 x DIN 7984 M8 x 14 class 8.8 into tapped M8 threads; the 224 x 40 mm
+  pattern is internal to the DOLD assembly. Text only (the `lift_column_section` datum note and the description README); neither pattern is modelled, so no
+  geometry changes. Datums revision `2026-11-08.b` -> `2026-11-10.a`, so every `config_id` changes.
+- **Mass inputs from the reviewed roadmap export on openamrobot-docs main** (`ff8ca57`, docs #84; was the branch export `eaa26aa`, 8 Nov 2026):
+  `config/roadmap_mass_export.yaml` is the verbatim copy, `roadmap_mass_export.source.yaml` carries the new commit and SHA-256. For the upper body only
+  `lift_column_base_link` changes: 9.100 -> 9.132 kg (the four DIN 7984 M8 x 14 foot screws, LFT-008, BOM Issue 7.15, D-20), com z 0.1239 -> 0.1234 m.
+  `lift_carriage_link` stays 6.721 kg. The base links come from platform-sw at the merge commit of platform-sw #126 (`713574f`), which carries the
+  export's base figure (58.16 kg).
+
+- **Collision matrix re-derived for the platform pin `713574f`** (`scripts/derive_acm.py --write`, ROS 2 Jazzy with moveit_py 2.12.4): 180 disabled pairs
+  (20 upstream + 28 `Adjacent` + 132 `ConstantTransform`), was 194; fingerprint `sha256:2263a2f6...a39d`. camera_link has no collision geometry since platform-sw #106
+  (a frame only; its placeholder box was removed), so its 14 pairs are gone: `Adjacent` with base_link and `ConstantTransform` with the four wheels, the four
+  castors, lidar_link, lift_column_base_link and the three stop sensors. None added or relabelled. `test_acm_derive.py` and `test_m03_acm_sampling.py` expect
+  180 / 132 (structural neighbours 46, was 47); the moveit README states the new contract.
+
+### Changed (8 Nov 2026; owner decisions, P-03 rev20.4 item 28)
+
+The combined model now carries the values the roadmap model (openamrobot-docs branch `roadmap/2026-11-08-owner-decisions`, not yet merged) draws.
+Register change openAMRobot/.github#90, change request openAMRobot/.github#89. Datums revision `2026-11-08.b`, so every `config_id` changes.
+
+- **Head camera lens 0.060 m ahead of the arm mount** (`upperbody_configuration.yaml` `geometry.head_camera_lens.x_ahead_of_arm_mount`, was 0.042, P-03 rev20.0 item 18;
+  the docs model had 0.057 on 2 Nov 2026).
+- **Getac ZX80 portrait only, on a fixed mount.** `getac_tablet_size` is the portrait box `[0.0176, 0.1498, 0.234]` (was landscape), its centre 0.191 above the column top
+  (was 0.246: 55 mm lower than the P-03 rev20.2 item 26 placeholder). The rotatable mount is withdrawn: `getac_tablet_portrait_size` and `getac_tablet_portrait_pivot`
+  are deleted, and `tools/report_equipment_collisions.py` drops its portrait variant and assumed pivot. Head light top edge 10 mm below the Getac (`head_light_gap_below_tablet`
+  0.030 -> 0.010; head light centre 0.0555 above the column top).
+- **DOLD supplier CAD** (`Hexalift_EB530_Hub350_mit_Montagelaschen.STEP`, owner, 8 Nov 2026): `lift_static_profile_top_below_column_top` 0.018 (placeholder) -> 0.025
+  (supplier, provisional), and it now sets the fixed stage's box (0 to 0.505 m, was 0 to 0.530); `lift_inner_section` `[0.2095, 0.051]` -> `[0.2095, 0.0533, 0.470]`
+  (a triple: the stage length is no longer the stroke), its top at the carriage frame, bottom 60 mm above the column base at L1000; `lift_column_section` `[0.240, 0.060]`
+  confirmed. The STEP's foot (280 x 60.4 x 10 mm) is **not modelled** (noted in the datum). The fixing pattern this entry first gave is superseded: see 10 Nov 2026 above.
+- **Adapter plate one 6082-T6 part, 425 x 100 x 10 mm, with a 65 mm rear extension** behind the column rear face for the flag rod (`adapter_plate_section` `[0.360, 0.100]`
+  -> `[0.425, 0.100]`, new datum `adapter_plate_rear_extension` 0.065; rear edge x -0.185 from the column axis, was flush at -0.120). The arm profile's pose is unchanged.
+- **Second E-stop on the moving adapter plate** behind the arm post, above the column axis, centred in y, button up, in a 64 x 50 x 50 mm housing envelope:
+  `second_estop_link` is now a child of `adapter_plate_link` (was `lift_column_base_link`, on the static profile rear face facing rearward). New datums
+  `second_estop_panel_above_plate` 0.048 and `second_estop_housing_size`; `second_estop_panel_behind_profile` and `second_estop_below_profile_top` are deleted. The three
+  E-stop part sizes are unchanged; their axis convention now says x is up. Geometry only, no safety logic.
+- **Lift stop sensors on the rear face of the static column** (owner correction A6): sensor axes along y, 28 mm behind the rear face (x -0.148), centred in y, sensing faces
+  toward +y (y 0.024); the bracket's face leg on the rear face. The flag rod sits behind them (x -0.183 to -0.163, y 0.028 to 0.048, 9 mm clear of the face discs) under the
+  plate's extension, the flag (now 45 fore-aft x 2 across x 20) on the rod's side face, 2 mm off the faces. New datums `lift_stop_sensor_axis_behind_rear_face` 0.028 and
+  `lift_flag_rod_clearance` 0.009; deleted `lift_stop_sensor_face_x`, `lift_stop_sensor_axis_from_face`, `lift_sensor_bracket_sensor_leg_from_back`,
+  `lift_flag_offset_from_face`, `lift_flag_rod_offset_from_face`. The corner bracket the docs model draws is not modelled (LIFT-JSON `corner_x`, not exported).
+- **Docs-model fixture refreshed** (`test/fixtures/docs_model_item24.json`, `merged: false`, base `8d743e2`); `tools/export_docs_model_values.py` exports the new
+  CHEST-JSON and LIFT-JSON keys and equals the local model.js (`--model-js`: equal). Frame contract, READMEs and the tests that pinned the old values updated.
+- **Collision matrix re-derived** (`scripts/derive_acm.py --write`, ROS 2 Jazzy with moveit_py, after the review on #48): 194 disabled pairs (20 upstream +
+  29 `Adjacent` + 145 `ConstantTransform`), was 198. The second E-stop's pairs with the base, wheels, castors, LiDAR, camera, column base and stop sensors are gone (it
+  rides the lift now, so they are checked); its pairs with the adapter plate (`Adjacent`), arm profile, carriage, tablet, head light, head camera and bracket, flag rod,
+  flag and both arm base links are new (`ConstantTransform`). `test_acm_derive.py` and `test_m03_acm_sampling.py` expect 194 / 145.
+- **Upper-body masses from the roadmap model, every part once on the link where it sits** (owner decisions 8 Nov 2026, P-03 rev20.5 item 29 and rev20.6 item 30 A6):
+  `config/roadmap_mass_export.yaml` is a verbatim copy of openamrobot-docs `mass_export.yaml`, pinned by commit and SHA-256 in `config/roadmap_mass_export.source.yaml`.
+  New `urdf/roadmap_inertial.xacro`: every upper-body link with mass reads its inertial from the export: `lift_column_base_link` 9.10 kg (static DOLD share 8.89 kg of the
+  catalogue 11.7 kg, stop sensors, brackets, lift node), `lift_carriage_link` 6.72 kg (moving DOLD share 2.81 kg, adapter plate set, arm profile, Getac mount, second E-stop,
+  flag rod and flag), `getac_tablet_link`, `head_light_link`, `head_camera_link` (ZED Mini with its mount) and the two wrist camera links. The arm links keep the upstream
+  masses (the ARM-001 line). New xacro arg `roadmap_masses` (default `true`; `false` gives the datum inertials, kept for the datum tests and the TL3 fallback).
+  `test/test_roadmap_masses.py` checks the expanded URDF link by link against the export, the pin, and that nothing is counted twice; the T10, S4, item 24 and T12 tests
+  follow. `mass_provenance.yaml` says where each mass is. Design values, not weighed.
+
 ### Fixed (P29, 28 Oct 2026; test-only, one race and two false lines)
 
 - **The AUX race in `test_zz_a_reading_beyond_the_epsilon_is_not_hidden` (P28 A7 run 2: 42 != 41).** Root cause: the test compared `activations` read **before** switching the injected value to -1e-3 with

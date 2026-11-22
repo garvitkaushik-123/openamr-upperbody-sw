@@ -189,21 +189,23 @@
     </group_state>
 
     <!-- Gripper states, one value PER HAND, never one number for both (ADR-009 point 5). The two hands take opposite-signed
-         GripperCommand positions, upstream's convention: left finger_joint1 range [0, 0.7854], right [-0.7854, 0]. `open` is the
-         end both ranges share (0). `closed` is the FAR END of each hand's own range, read from the URDF limits: not a grasp
-         aperture, and not a statement about what the gripper closes on. A single "close" value would be outside the right
-         hand's range (or the left hand's) without any error at the point it is written; test_gripper_sign.py is what catches it. -->
+         GripperCommand positions, upstream's convention: left finger_joint1 range [0, 0.7854], right [-0.7854, 0]. `closed` is the
+         end both ranges share (0): the gripper motor's zero is the closed hand (upstream docs, driver and MuJoCo model; in this URDF
+         the fingertips are 0.1 mm apart at 0 and 139 mm apart at the far end). `open` is the FAR END of each hand's own range, read
+         from the URDF limits: fully open, not a grasp aperture. A single "open" value would be outside the right hand's range (or
+         the left hand's) without any error at the point it is written; test_gripper_sign.py is what catches it.
+         Until 14 Nov 2026 the two names were the other way round (`open` 0, `closed` at the far end): a `closed` command opened the hand. -->
     <group_state name="open" group="left_gripper">
-        <joint name="openarm_left_finger_joint1" value="0"/>
-    </group_state>
-    <group_state name="closed" group="left_gripper">
         <joint name="openarm_left_finger_joint1" value="0.7854"/>
     </group_state>
+    <group_state name="closed" group="left_gripper">
+        <joint name="openarm_left_finger_joint1" value="0"/>
+    </group_state>
     <group_state name="open" group="right_gripper">
-        <joint name="openarm_right_finger_joint1" value="0"/>
+        <joint name="openarm_right_finger_joint1" value="-0.7854"/>
     </group_state>
     <group_state name="closed" group="right_gripper">
-        <joint name="openarm_right_finger_joint1" value="-0.7854"/>
+        <joint name="openarm_right_finger_joint1" value="0"/>
     </group_state>
 
     <!-- ===== 3. Derived: self-collision matrix (README, "The SRDF") ================================================= -->
@@ -211,7 +213,7 @@
     <!-- Derived by scripts/derive_acm.py (P12A) from the model's kinematic tree at bp000, lift_joint at 0: no sampling, no seed. A pair is
          disabled for exactly three reasons, upstream-declared (section 1), `Adjacent` (a structural neighbour) and
          `ConstantTransform` (no movable joint between the links, clear in the one evaluation that settles every configuration):
-         29 Adjacent and 149 ConstantTransform pairs here, none of them from a sampler.
+         28 Adjacent and 132 ConstantTransform pairs here, none of them from a sampler.
          Every other pair is enabled. Record: config/acm/acm_generation.yaml; the way to redo it: scripts/regenerate_acm.sh. -->
     <disable_collisions link1="adapter_plate_link" link2="arm_profile_link" reason="Adjacent"/>
     <disable_collisions link1="adapter_plate_link" link2="getac_tablet_link" reason="ConstantTransform"/>
@@ -223,6 +225,7 @@
     <disable_collisions link1="adapter_plate_link" link2="lift_flag_rod_link" reason="Adjacent"/>
     <disable_collisions link1="adapter_plate_link" link2="openarm_left_base_link" reason="ConstantTransform"/>
     <disable_collisions link1="adapter_plate_link" link2="openarm_right_base_link" reason="ConstantTransform"/>
+    <disable_collisions link1="adapter_plate_link" link2="second_estop_link" reason="Adjacent"/>
     <disable_collisions link1="arm_profile_link" link2="getac_tablet_link" reason="Adjacent"/>
     <disable_collisions link1="arm_profile_link" link2="head_camera_bracket_link" reason="ConstantTransform"/>
     <disable_collisions link1="arm_profile_link" link2="head_camera_link" reason="ConstantTransform"/>
@@ -232,11 +235,11 @@
     <disable_collisions link1="arm_profile_link" link2="lift_flag_rod_link" reason="ConstantTransform"/>
     <disable_collisions link1="arm_profile_link" link2="openarm_left_base_link" reason="ConstantTransform"/>
     <disable_collisions link1="arm_profile_link" link2="openarm_right_base_link" reason="ConstantTransform"/>
+    <disable_collisions link1="arm_profile_link" link2="second_estop_link" reason="ConstantTransform"/>
     <disable_collisions link1="base_link" link2="bl_caster_link" reason="Adjacent"/>
     <disable_collisions link1="base_link" link2="bl_wheel_link" reason="ConstantTransform"/>
     <disable_collisions link1="base_link" link2="br_caster_link" reason="Adjacent"/>
     <disable_collisions link1="base_link" link2="br_wheel_link" reason="ConstantTransform"/>
-    <disable_collisions link1="base_link" link2="camera_link" reason="Adjacent"/>
     <disable_collisions link1="base_link" link2="fl_caster_link" reason="Adjacent"/>
     <disable_collisions link1="base_link" link2="fl_wheel_link" reason="ConstantTransform"/>
     <disable_collisions link1="base_link" link2="fr_caster_link" reason="Adjacent"/>
@@ -248,11 +251,9 @@
     <disable_collisions link1="base_link" link2="lift_stop_sensor_l1175_link" reason="ConstantTransform"/>
     <disable_collisions link1="base_link" link2="lift_stop_sensor_l1350_link" reason="ConstantTransform"/>
     <disable_collisions link1="base_link" link2="right_wheel_link" reason="Adjacent"/>
-    <disable_collisions link1="base_link" link2="second_estop_link" reason="ConstantTransform"/>
     <disable_collisions link1="bl_caster_link" link2="bl_wheel_link" reason="Adjacent"/>
     <disable_collisions link1="bl_caster_link" link2="br_caster_link" reason="ConstantTransform"/>
     <disable_collisions link1="bl_caster_link" link2="br_wheel_link" reason="ConstantTransform"/>
-    <disable_collisions link1="bl_caster_link" link2="camera_link" reason="ConstantTransform"/>
     <disable_collisions link1="bl_caster_link" link2="fl_caster_link" reason="ConstantTransform"/>
     <disable_collisions link1="bl_caster_link" link2="fl_wheel_link" reason="ConstantTransform"/>
     <disable_collisions link1="bl_caster_link" link2="fr_caster_link" reason="ConstantTransform"/>
@@ -262,10 +263,8 @@
     <disable_collisions link1="bl_caster_link" link2="lift_stop_sensor_l1000_link" reason="ConstantTransform"/>
     <disable_collisions link1="bl_caster_link" link2="lift_stop_sensor_l1175_link" reason="ConstantTransform"/>
     <disable_collisions link1="bl_caster_link" link2="lift_stop_sensor_l1350_link" reason="ConstantTransform"/>
-    <disable_collisions link1="bl_caster_link" link2="second_estop_link" reason="ConstantTransform"/>
     <disable_collisions link1="bl_wheel_link" link2="br_caster_link" reason="ConstantTransform"/>
     <disable_collisions link1="bl_wheel_link" link2="br_wheel_link" reason="ConstantTransform"/>
-    <disable_collisions link1="bl_wheel_link" link2="camera_link" reason="ConstantTransform"/>
     <disable_collisions link1="bl_wheel_link" link2="fl_caster_link" reason="ConstantTransform"/>
     <disable_collisions link1="bl_wheel_link" link2="fl_wheel_link" reason="ConstantTransform"/>
     <disable_collisions link1="bl_wheel_link" link2="fr_caster_link" reason="ConstantTransform"/>
@@ -275,9 +274,7 @@
     <disable_collisions link1="bl_wheel_link" link2="lift_stop_sensor_l1000_link" reason="ConstantTransform"/>
     <disable_collisions link1="bl_wheel_link" link2="lift_stop_sensor_l1175_link" reason="ConstantTransform"/>
     <disable_collisions link1="bl_wheel_link" link2="lift_stop_sensor_l1350_link" reason="ConstantTransform"/>
-    <disable_collisions link1="bl_wheel_link" link2="second_estop_link" reason="ConstantTransform"/>
     <disable_collisions link1="br_caster_link" link2="br_wheel_link" reason="Adjacent"/>
-    <disable_collisions link1="br_caster_link" link2="camera_link" reason="ConstantTransform"/>
     <disable_collisions link1="br_caster_link" link2="fl_caster_link" reason="ConstantTransform"/>
     <disable_collisions link1="br_caster_link" link2="fl_wheel_link" reason="ConstantTransform"/>
     <disable_collisions link1="br_caster_link" link2="fr_caster_link" reason="ConstantTransform"/>
@@ -287,8 +284,6 @@
     <disable_collisions link1="br_caster_link" link2="lift_stop_sensor_l1000_link" reason="ConstantTransform"/>
     <disable_collisions link1="br_caster_link" link2="lift_stop_sensor_l1175_link" reason="ConstantTransform"/>
     <disable_collisions link1="br_caster_link" link2="lift_stop_sensor_l1350_link" reason="ConstantTransform"/>
-    <disable_collisions link1="br_caster_link" link2="second_estop_link" reason="ConstantTransform"/>
-    <disable_collisions link1="br_wheel_link" link2="camera_link" reason="ConstantTransform"/>
     <disable_collisions link1="br_wheel_link" link2="fl_caster_link" reason="ConstantTransform"/>
     <disable_collisions link1="br_wheel_link" link2="fl_wheel_link" reason="ConstantTransform"/>
     <disable_collisions link1="br_wheel_link" link2="fr_caster_link" reason="ConstantTransform"/>
@@ -298,17 +293,6 @@
     <disable_collisions link1="br_wheel_link" link2="lift_stop_sensor_l1000_link" reason="ConstantTransform"/>
     <disable_collisions link1="br_wheel_link" link2="lift_stop_sensor_l1175_link" reason="ConstantTransform"/>
     <disable_collisions link1="br_wheel_link" link2="lift_stop_sensor_l1350_link" reason="ConstantTransform"/>
-    <disable_collisions link1="br_wheel_link" link2="second_estop_link" reason="ConstantTransform"/>
-    <disable_collisions link1="camera_link" link2="fl_caster_link" reason="ConstantTransform"/>
-    <disable_collisions link1="camera_link" link2="fl_wheel_link" reason="ConstantTransform"/>
-    <disable_collisions link1="camera_link" link2="fr_caster_link" reason="ConstantTransform"/>
-    <disable_collisions link1="camera_link" link2="fr_wheel_link" reason="ConstantTransform"/>
-    <disable_collisions link1="camera_link" link2="lidar_link" reason="ConstantTransform"/>
-    <disable_collisions link1="camera_link" link2="lift_column_base_link" reason="ConstantTransform"/>
-    <disable_collisions link1="camera_link" link2="lift_stop_sensor_l1000_link" reason="ConstantTransform"/>
-    <disable_collisions link1="camera_link" link2="lift_stop_sensor_l1175_link" reason="ConstantTransform"/>
-    <disable_collisions link1="camera_link" link2="lift_stop_sensor_l1350_link" reason="ConstantTransform"/>
-    <disable_collisions link1="camera_link" link2="second_estop_link" reason="ConstantTransform"/>
     <disable_collisions link1="fl_caster_link" link2="fl_wheel_link" reason="Adjacent"/>
     <disable_collisions link1="fl_caster_link" link2="fr_caster_link" reason="ConstantTransform"/>
     <disable_collisions link1="fl_caster_link" link2="fr_wheel_link" reason="ConstantTransform"/>
@@ -317,7 +301,6 @@
     <disable_collisions link1="fl_caster_link" link2="lift_stop_sensor_l1000_link" reason="ConstantTransform"/>
     <disable_collisions link1="fl_caster_link" link2="lift_stop_sensor_l1175_link" reason="ConstantTransform"/>
     <disable_collisions link1="fl_caster_link" link2="lift_stop_sensor_l1350_link" reason="ConstantTransform"/>
-    <disable_collisions link1="fl_caster_link" link2="second_estop_link" reason="ConstantTransform"/>
     <disable_collisions link1="fl_wheel_link" link2="fr_caster_link" reason="ConstantTransform"/>
     <disable_collisions link1="fl_wheel_link" link2="fr_wheel_link" reason="ConstantTransform"/>
     <disable_collisions link1="fl_wheel_link" link2="lidar_link" reason="ConstantTransform"/>
@@ -325,20 +308,17 @@
     <disable_collisions link1="fl_wheel_link" link2="lift_stop_sensor_l1000_link" reason="ConstantTransform"/>
     <disable_collisions link1="fl_wheel_link" link2="lift_stop_sensor_l1175_link" reason="ConstantTransform"/>
     <disable_collisions link1="fl_wheel_link" link2="lift_stop_sensor_l1350_link" reason="ConstantTransform"/>
-    <disable_collisions link1="fl_wheel_link" link2="second_estop_link" reason="ConstantTransform"/>
     <disable_collisions link1="fr_caster_link" link2="fr_wheel_link" reason="Adjacent"/>
     <disable_collisions link1="fr_caster_link" link2="lidar_link" reason="ConstantTransform"/>
     <disable_collisions link1="fr_caster_link" link2="lift_column_base_link" reason="ConstantTransform"/>
     <disable_collisions link1="fr_caster_link" link2="lift_stop_sensor_l1000_link" reason="ConstantTransform"/>
     <disable_collisions link1="fr_caster_link" link2="lift_stop_sensor_l1175_link" reason="ConstantTransform"/>
     <disable_collisions link1="fr_caster_link" link2="lift_stop_sensor_l1350_link" reason="ConstantTransform"/>
-    <disable_collisions link1="fr_caster_link" link2="second_estop_link" reason="ConstantTransform"/>
     <disable_collisions link1="fr_wheel_link" link2="lidar_link" reason="ConstantTransform"/>
     <disable_collisions link1="fr_wheel_link" link2="lift_column_base_link" reason="ConstantTransform"/>
     <disable_collisions link1="fr_wheel_link" link2="lift_stop_sensor_l1000_link" reason="ConstantTransform"/>
     <disable_collisions link1="fr_wheel_link" link2="lift_stop_sensor_l1175_link" reason="ConstantTransform"/>
     <disable_collisions link1="fr_wheel_link" link2="lift_stop_sensor_l1350_link" reason="ConstantTransform"/>
-    <disable_collisions link1="fr_wheel_link" link2="second_estop_link" reason="ConstantTransform"/>
     <disable_collisions link1="getac_tablet_link" link2="head_camera_bracket_link" reason="ConstantTransform"/>
     <disable_collisions link1="getac_tablet_link" link2="head_camera_link" reason="ConstantTransform"/>
     <disable_collisions link1="getac_tablet_link" link2="head_light_link" reason="ConstantTransform"/>
@@ -347,6 +327,7 @@
     <disable_collisions link1="getac_tablet_link" link2="lift_flag_rod_link" reason="ConstantTransform"/>
     <disable_collisions link1="getac_tablet_link" link2="openarm_left_base_link" reason="ConstantTransform"/>
     <disable_collisions link1="getac_tablet_link" link2="openarm_right_base_link" reason="ConstantTransform"/>
+    <disable_collisions link1="getac_tablet_link" link2="second_estop_link" reason="ConstantTransform"/>
     <disable_collisions link1="head_camera_bracket_link" link2="head_camera_link" reason="Adjacent"/>
     <disable_collisions link1="head_camera_bracket_link" link2="head_light_link" reason="ConstantTransform"/>
     <disable_collisions link1="head_camera_bracket_link" link2="lift_carriage_link" reason="Adjacent"/>
@@ -354,43 +335,46 @@
     <disable_collisions link1="head_camera_bracket_link" link2="lift_flag_rod_link" reason="ConstantTransform"/>
     <disable_collisions link1="head_camera_bracket_link" link2="openarm_left_base_link" reason="ConstantTransform"/>
     <disable_collisions link1="head_camera_bracket_link" link2="openarm_right_base_link" reason="ConstantTransform"/>
+    <disable_collisions link1="head_camera_bracket_link" link2="second_estop_link" reason="ConstantTransform"/>
     <disable_collisions link1="head_camera_link" link2="head_light_link" reason="ConstantTransform"/>
     <disable_collisions link1="head_camera_link" link2="lift_carriage_link" reason="Adjacent"/>
     <disable_collisions link1="head_camera_link" link2="lift_flag_link" reason="ConstantTransform"/>
     <disable_collisions link1="head_camera_link" link2="lift_flag_rod_link" reason="ConstantTransform"/>
     <disable_collisions link1="head_camera_link" link2="openarm_left_base_link" reason="ConstantTransform"/>
     <disable_collisions link1="head_camera_link" link2="openarm_right_base_link" reason="ConstantTransform"/>
+    <disable_collisions link1="head_camera_link" link2="second_estop_link" reason="ConstantTransform"/>
     <disable_collisions link1="head_light_link" link2="lift_carriage_link" reason="ConstantTransform"/>
     <disable_collisions link1="head_light_link" link2="lift_flag_link" reason="ConstantTransform"/>
     <disable_collisions link1="head_light_link" link2="lift_flag_rod_link" reason="ConstantTransform"/>
     <disable_collisions link1="head_light_link" link2="openarm_left_base_link" reason="ConstantTransform"/>
     <disable_collisions link1="head_light_link" link2="openarm_right_base_link" reason="ConstantTransform"/>
+    <disable_collisions link1="head_light_link" link2="second_estop_link" reason="ConstantTransform"/>
     <disable_collisions link1="lidar_link" link2="lift_column_base_link" reason="ConstantTransform"/>
     <disable_collisions link1="lidar_link" link2="lift_stop_sensor_l1000_link" reason="ConstantTransform"/>
     <disable_collisions link1="lidar_link" link2="lift_stop_sensor_l1175_link" reason="ConstantTransform"/>
     <disable_collisions link1="lidar_link" link2="lift_stop_sensor_l1350_link" reason="ConstantTransform"/>
-    <disable_collisions link1="lidar_link" link2="second_estop_link" reason="ConstantTransform"/>
     <disable_collisions link1="lift_carriage_link" link2="lift_column_base_link" reason="Adjacent"/>
     <disable_collisions link1="lift_carriage_link" link2="lift_flag_link" reason="ConstantTransform"/>
     <disable_collisions link1="lift_carriage_link" link2="lift_flag_rod_link" reason="ConstantTransform"/>
     <disable_collisions link1="lift_carriage_link" link2="openarm_left_base_link" reason="Adjacent"/>
     <disable_collisions link1="lift_carriage_link" link2="openarm_right_base_link" reason="Adjacent"/>
+    <disable_collisions link1="lift_carriage_link" link2="second_estop_link" reason="ConstantTransform"/>
     <disable_collisions link1="lift_column_base_link" link2="lift_stop_sensor_l1000_link" reason="Adjacent"/>
     <disable_collisions link1="lift_column_base_link" link2="lift_stop_sensor_l1175_link" reason="Adjacent"/>
     <disable_collisions link1="lift_column_base_link" link2="lift_stop_sensor_l1350_link" reason="Adjacent"/>
-    <disable_collisions link1="lift_column_base_link" link2="second_estop_link" reason="Adjacent"/>
     <disable_collisions link1="lift_flag_link" link2="lift_flag_rod_link" reason="Adjacent"/>
     <disable_collisions link1="lift_flag_link" link2="openarm_left_base_link" reason="ConstantTransform"/>
     <disable_collisions link1="lift_flag_link" link2="openarm_right_base_link" reason="ConstantTransform"/>
+    <disable_collisions link1="lift_flag_link" link2="second_estop_link" reason="ConstantTransform"/>
     <disable_collisions link1="lift_flag_rod_link" link2="openarm_left_base_link" reason="ConstantTransform"/>
     <disable_collisions link1="lift_flag_rod_link" link2="openarm_right_base_link" reason="ConstantTransform"/>
+    <disable_collisions link1="lift_flag_rod_link" link2="second_estop_link" reason="ConstantTransform"/>
     <disable_collisions link1="lift_stop_sensor_l1000_link" link2="lift_stop_sensor_l1175_link" reason="ConstantTransform"/>
     <disable_collisions link1="lift_stop_sensor_l1000_link" link2="lift_stop_sensor_l1350_link" reason="ConstantTransform"/>
-    <disable_collisions link1="lift_stop_sensor_l1000_link" link2="second_estop_link" reason="ConstantTransform"/>
     <disable_collisions link1="lift_stop_sensor_l1175_link" link2="lift_stop_sensor_l1350_link" reason="ConstantTransform"/>
-    <disable_collisions link1="lift_stop_sensor_l1175_link" link2="second_estop_link" reason="ConstantTransform"/>
-    <disable_collisions link1="lift_stop_sensor_l1350_link" link2="second_estop_link" reason="ConstantTransform"/>
     <disable_collisions link1="openarm_left_base_link" link2="openarm_right_base_link" reason="ConstantTransform"/>
+    <disable_collisions link1="openarm_left_base_link" link2="second_estop_link" reason="ConstantTransform"/>
+    <disable_collisions link1="openarm_right_base_link" link2="second_estop_link" reason="ConstantTransform"/>
     <!-- END GENERATED ACM -->
 
 </robot>

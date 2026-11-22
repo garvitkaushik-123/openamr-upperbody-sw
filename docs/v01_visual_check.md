@@ -108,7 +108,8 @@ Look at both windows for each item. Gazebo shows what the physics built; RViz sh
    (**1.5**, within 0.01) of the real robot (the Gazebo window, and the Scene Robot in RViz), and that the Scene Robot's
    `openarm_left_ee_base_link` and the real one's differ by **less than 0.01 m** (`tf2_echo`). Repeat with `right_arm`, then `home` and
    `park` (`park` is a placeholder: `home` with joint 4 at **0.1** instead of 0, off its lower limit, issue #17), then the grippers
-   (`left_gripper` / `right_gripper`, `closed` at **+0.7854 / -0.7854** and `open` at 0: the two hands take opposite-signed values).
+   (`left_gripper` / `right_gripper`, `open` at **+0.7854 / -0.7854** and `closed` at 0: the two hands take opposite-signed values, and
+   the fingers must be seen apart at `open` and together at `closed`. Until 14 Nov 2026 the two names were the other way round).
    *If RViz says "Planning failed" right after the arm has been at `home`:* that should not happen any more. In Gazebo `home` sets elbow
    joint 4 exactly on its lower limit (0) and the simulator reads it a hair past it, which MoveIt refuses; `move_group` plans from a
    joint state with that noise clamped (see the MoveIt package README, "The joint-state clamp"). If you see it, say so: it is a finding.
@@ -139,7 +140,7 @@ own visual geometry, no simulator): `evidence/renders/`.
 | 5 | about 1.0 m, about 2.5 rad; offset change 0.000 | 0.9995 m, 2.465 rad; offset change 0.0 | **PASS** for the numbers. CANNOT-MEASURE: whether RViz's and Gazebo's models are further apart than a wheel width (two windows by eye; the script's lookup of Gazebo's base pose returned nothing) |
 | 6 | joints 1/2/4 0.3 / -0.6 / 1.2 +-0.02; right arm, wheels < 0.001; first-second step a fraction of the final value | 0.30001 / -0.60001 / 1.19995; right arm 1.2e-5, wheels 0.0; largest step 0.0015 / 0.0030 / 0.0060 rad | **PASS** |
 | 7 | finger_joint2 = finger_joint1 within 0.01; right opposite in sign | left 0.4008 / 0.4008, right -0.4000 / -0.4000 in `/joint_states` (a kinematic mimic: cannot disagree); physical link-pose angles left 0.4008 / 0.4002, right -0.4000 / -0.4000 | **PASS** |
-| 8 | joint4 1.5 +-0.01; scene vs real end effector < 0.01 m; park == home; grippers +0.7854 / -0.7854, open 0 | joint4 1.50037 (left), 1.49916 (right); goal-state vs real end effector at most 0.0005 m (six arm poses); park == home (both arms); closed 0.78457 / -0.78456; 10 of 10 requests SUCCESS | **PASS** for the numbers. CANNOT-MEASURE: "the Scene Robot in RViz" is an RViz object; the goal state's forward kinematics against the real tf stands in for it |
+| 8 | joint4 1.5 +-0.01; scene vs real end effector < 0.01 m; park == home; grippers +0.7854 / -0.7854 at the far end (named `closed` when measured, `open` since 14 Nov 2026), 0 at the other | joint4 1.50037 (left), 1.49916 (right); goal-state vs real end effector at most 0.0005 m (six arm poses); park == home (both arms); closed 0.78457 / -0.78456; 10 of 10 requests SUCCESS | **PASS** for the numbers. CANNOT-MEASURE: "the Scene Robot in RViz" is an RViz object; the goal state's forward kinematics against the real tf stands in for it |
 
 **What this does not change.** V01 stays `WARN`, and would whatever these eight said: `lift_mass_tl3_400` is null (no supplier mass for the
 fallback TL3 400 column), so one of the two columns the model offers cannot be built, and nothing here measured it. These eight are
@@ -359,7 +360,7 @@ The six captures are in `evidence/p28/rviz/` (`rviz_<stop>_<plate>.png`, 1500 x 
 | 5 | driving: distance and offset | about 1.0 m and about 2.5 rad; `base_footprint` -> `lift_carriage_link` unchanged by driving (offset change 0.000); say whether RViz's and Gazebo's models are further apart than a wheel's width | live (simulator) | none | | |
 | 6 | an arm trajectory: what moves | `openarm_left_joint1/2/4` at the end 0.3 / -0.6 / 1.2 (within 0.02); right arm and wheels moved by less than 0.001 | live (simulator) | none | | |
 | 7 | the gripper: both fingers | `finger_joint1` and `finger_joint2` equal within 0.01; the right hand opposite in sign | live (simulator) | none | | |
-| 8 | MoveIt: a named pose, preview and execution | `hands_up`: final `openarm_left_joint4` 1.5 (within 0.01), real and Scene Robot end-effector within 0.01 m; `park` equal to `home`; grippers `closed` +0.7854 / -0.7854, `open` 0 | live (simulator, MoveIt) | none | | |
+| 8 | MoveIt: a named pose, preview and execution | `hands_up`: final `openarm_left_joint4` 1.5 (within 0.01), real and Scene Robot end-effector within 0.01 m; `park` equal to `home`; grippers `open` +0.7854 / -0.7854, `closed` 0 | live (simulator, MoveIt) | none | | |
 
 Also for a person, and not answerable from a still: whether the stages, the plate and the profile look like the supplier's parts (they are boxes, and the two stages still overlap in volume), and whether the colour you see in RViz is the colour you see in Gazebo (P25 finding; Gazebo's is greyer and darker).
 

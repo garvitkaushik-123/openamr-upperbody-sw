@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: MIT
-"""G02: in Gazebo both grippers close, and finger_joint2 follows finger_joint1 in the physics (the P06 mimic question).
+"""G02: in Gazebo both grippers reach a goal off zero (they open part way), and finger_joint2 follows finger_joint1 in the physics (the P06 mimic question).
 
 Why this test passes `physics_engine` explicitly (P10 task 0, 6 Oct): sim.launch.py defaults to DART, the engine platform-sw
 tuned the base on, and a gripper-mimic convenience is not grounds to re-baseline someone else's physics. The mimic and the
@@ -85,7 +85,7 @@ class TestGripperMimic(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        write_g_sidecar("G02", "gripper_mimic", "grippers close in Gazebo and finger_joint2 follows finger_joint1 in the physics",
+        write_g_sidecar("G02", "gripper_mimic", "grippers reach their goals in Gazebo and finger_joint2 follows finger_joint1 in the physics",
                         cls.record, expected=("left", "right"), physics_engine=ENGINE_THE_MIMIC_NEEDS)
         cls.node.destroy_node()
         rclpy.shutdown()
@@ -151,10 +151,10 @@ class TestProcessesAlive(unittest.TestCase):
 
 @launch_testing.post_shutdown_test()
 class TestShutdown(unittest.TestCase):
-    def test_g02_processes_started_and_exited_cleanly(self, proc_info):
+    def test_g02_processes_started_and_exited_cleanly(self, proc_info, proc_output):
         """The processes of the launch started, and none ended with a code that is neither 0 nor a documented shutdown behaviour (launch_guard.py)."""
         assert_launch_healthy(proc_info, expected=EXPECTED_PROCESSES, allowed=SIM_ALLOWED,
-                              record=lambda records: amend_g_sidecar("G02", "gripper_mimic", "process_exits", records))
+                              record=lambda records: amend_g_sidecar("G02", "gripper_mimic", "process_exits", records), proc_output=proc_output)
 
     def test_g02_no_gz_server_of_this_run_survives_the_teardown(self):
         """P16: after the launch has been torn down no `gz sim` carrying this run's GZ_PARTITION is still alive. `gz sim` is a ruby wrapper

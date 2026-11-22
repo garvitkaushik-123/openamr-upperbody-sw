@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: MIT
+# Simulation-only controller parameters, read AFTER arm_controllers.yaml by the Gazebo profile (a later file wins).
+# arm_controllers.yaml stays one file for every hardware profile and is unchanged; the real and mock profiles never read this file.
+# Each value here is a copy of the simulator dynamics profile, which carries its source
+# (openamrobot_upperbody_description config/sim_dynamics/openarm_v2.yaml); test_sim_overlay_yaml.py fails if a copy differs.
+#
+# update_rate 750 Hz: upstream's rate for the real arm driver (openarm_ros2 at the pin,
+# openarm_bringup/config/controllers/openarm_bimanual_controllers.yaml), so the simulated arm controllers are asked to run at the
+# rate the real ones run at upstream. gz_ros2_control updates the controllers on the first physics step at which one period has
+# passed, so with a 1 ms world step the measured rate is lower than the number here; the control package README says what was measured.
+#
+# max_effort 3.0 N*m: the rated torque of the gripper motor (DM-J4310-2EC V1.1), recorded on the command path of the simulated grippers.
+# NOT A FORCE LIMIT. GripperActionController on a position command interface carries max_effort and does not enforce it, and the
+# URDF effort limit of the finger joint is still 7 N*m, so the simulated finger can push with the motor's peak. See the README.
+
+controller_manager:
+  ros__parameters:
+    update_rate: 750 # Hz
+
+left_gripper_controller:
+  ros__parameters:
+    max_effort: 3.0 # N*m; carried, not enforced: not a force limit
+
+right_gripper_controller:
+  ros__parameters:
+    max_effort: 3.0 # N*m; carried, not enforced: not a force limit

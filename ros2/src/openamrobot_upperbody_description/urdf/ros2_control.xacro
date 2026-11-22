@@ -58,7 +58,7 @@
     </joint>
   </xacro:macro>
 
-  <xacro:macro name="openamr_arm_ros2_control" params="hardware_profile controllers_file:=''">
+  <xacro:macro name="openamr_arm_ros2_control" params="hardware_profile controllers_file:='' controllers_overlay_file:=''">
     <xacro:if value="${hardware_profile in ['mock', 'real']}">
       <!-- What upstream's openarm_v20.urdf.xacro does before it calls the macro. -->
       <xacro:property name="openarm_robot_root" value="$(find openarm_description)/assets/robot/openarm_v2.0"/>
@@ -92,6 +92,13 @@
         <plugin filename="gz_ros2_control-system" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
           <xacro:if value="${controllers_file != ''}">
             <parameters>${controllers_file}</parameters>
+          </xacro:if>
+          <!-- The simulation overlay, after the main file: gz_ros2_control hands every <parameters> to the controller manager in
+               order and a later file wins. Only values that hold for the simulation alone go there (sim_overlay.yaml in the
+               control package: the upstream update rate and the gripper max_effort), so arm_controllers.yaml stays one file for
+               every profile and the real profile is unchanged. -->
+          <xacro:if value="${controllers_overlay_file != ''}">
+            <parameters>${controllers_overlay_file}</parameters>
           </xacro:if>
         </plugin>
       </gazebo>

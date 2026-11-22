@@ -46,7 +46,7 @@ mkdir -p ~/openamr_ws/src/upstream
 cd ~/openamr_ws/src
 git clone https://github.com/openAMRobot/openamr-upperbody-sw.git
 git clone https://github.com/openAMRobot/openamr-platform-sw.git
-git -C openamr-platform-sw checkout 131e500fc4e5afc9f648cbd7dbf5b416280761fb
+git -C openamr-platform-sw checkout 8e7a45428d06b015cdf488ca8e182c450039afbc
 git clone https://github.com/enactic/openarm_description.git upstream/openarm_description
 git -C upstream/openarm_description checkout 14ff67b638ff1c738a1b9a6be8aaa5ce5ed2c831
 git clone https://github.com/enactic/openarm_ros2.git upstream/openarm_ros2
@@ -104,12 +104,12 @@ MoveIt in Gazebo, with RViz.
 ros2 launch openamrobot_upperbody_bringup moveit.launch.py sim:=gazebo rviz:=true physics_engine:=gz-physics-bullet-featherstone-plugin
 ```
 
-Work in progress: the grippers may not close on the default DART engine. Known issues: [Gazebo server teardown](docs/issues/gz-sim_server_teardown_segfault_and_hang.md) and [ros_gz bridge teardown](docs/issues/ros_gz-bridge_teardown_segfault.md).
+Work in progress: the grippers may not move on the default DART engine. Known issues: [Gazebo server teardown](docs/issues/gz-sim_server_teardown_segfault_and_hang.md) and [ros_gz bridge teardown](docs/issues/ros_gz-bridge_teardown_segfault.md).
 
 ## Build one or get help
 
 - **Hardware:** [openamr-platform-hw](https://github.com/openAMRobot/openamr-platform-hw)
-- **Packages and current prices:** [botshare.ai/openamrobot](https://botshare.ai/openamrobot?utm_source=github&utm_medium=readme#products). First dispatch April 2027.
+- **Packages and current prices:** [botshare.ai/openamrobot](https://botshare.ai/openamrobot?utm_source=github&utm_medium=readme#products). Planned delivery from April 2027; some assembled units may ship earlier, from the end of January 2027.
 - **OpenArm 2.0 Mobile Integration Sprint:** your gripper, tool or use case on the combined model, simulated and validated in 3 weeks at a fixed price. [Ask here](https://botshare.ai/openamrobot?utm_source=github&utm_medium=readme#ask).
 
 OpenArm 2.0 components come from the official [OpenArm](https://github.com/enactic/openarm) packages under their own licences. Keep their notices in forks.
@@ -124,6 +124,7 @@ OpenArm 2.0 components come from the official [OpenArm](https://github.com/enact
 - **Bringup:** launch files composing the base, upper body and arm integration from `openamrobot-manipulation`.
 - **Configuration metadata:** selected configuration IDs, model/configuration identity and calibration references.
 - **Lift control integration:** the lift height is joint state of `lift_joint`; the lift driver and its interlocks are owned by the firmware and safety work packages.
+- **OpenArm software in the loop:** `openamrobot_openarm_emulator` runs the unmodified upstream arm driver over Linux virtual CAN against emulated motors whose motion comes from Gazebo, with fault injection. Simulation only, no safety function. See its [README](ros2/src/openamrobot_openarm_emulator/README.md).
 
 ### Current development scope
 1. Combined URDF/Xacro with a correct TF tree, collision geometry and documented mounting transforms.
@@ -144,7 +145,7 @@ Decision of record: P-03 revision 18.9 item 18, 9 October 2026. Heights are from
 | Arm mount point | `openarm_{side}_base_link` at x = column axis + 0.180 m, y = ±0.031 m, roll/pitch/yaw 0 |
 | Shoulder height | 1.000 m at lift 0 (0.304 + 0.530 + 0.166), 1.350 m at lift 0.350 (0.304 + 0.880 + 0.166) |
 | Lift joint | `lift_joint`, prismatic, 0 to 0.350 m; calibration stops `L1000`, `L1175`, `L1350` |
-| Head camera | ZED Mini on the lift carriage, lens 0.042 m ahead of and 0.223 m above the arm mount point, y = 0 (P-03 rev20.0 item 18, 28 Oct 2026) |
+| Head camera | ZED Mini on the lift carriage, lens 0.060 m ahead of and 0.223 m above the arm mount point, y = 0 (P-03 rev20.4 item 28, 8 Nov 2026; was 0.042 m, P-03 rev20.0 item 18) |
 | Maximum assembled height | 1.700 m |
 
 Configuration IDs: `column` (`dold_v4_350`, `tl3_400`), `base_plate` (`bp000`, `bp050`), `head_pitch` (`hp15` to `hp35` in 5 degree steps, baseline `hp30`, P-03 rev20.0 item 17), `base_tilt` (`bt05`, `bt10`, `bt15`). The IDs, baselines and geometry live in [`config/upperbody_configuration.yaml`](ros2/src/openamrobot_upperbody_description/config/upperbody_configuration.yaml), the single input for the xacro arguments, the tests and the configuration hash. `tl3_400` is refused until its column lengths are available from the supplier. The upstream `openarm_body_link0` is not used.

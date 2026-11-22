@@ -11,7 +11,7 @@ arms and the lift on gz_ros2_control, the six controllers, move_group on the sim
 
 THE PHYSICS ENGINE: this test passes `physics_engine:=gz-physics-bullet-featherstone-plugin` explicitly. sim.launch.py defaults to DART (the
 engine platform-sw tuned the base on; decided 6 Oct), and on DART the fingers do not follow the position command at the default gain and
-`finger_joint2` has no mimic constraint, so a `closed` gripper pose would not close. The arm poses do not depend on the engine; the gripper
+`finger_joint2` has no mimic constraint, so an `open` gripper pose would not be reached. The arm poses do not depend on the engine; the gripper
 poses do, and they are part of what this check is for (the per-hand sign, live). That is the same reason G02 passes the engine. What was
 and was not compared on DART: see the gazebo package's README.
 
@@ -88,7 +88,7 @@ class TestNamedPosesInGazebo(unittest.TestCase):
                    "lift_tolerance_m": LIFT_TOLERANCE_M,
                    "hardware": "gz_ros2_control/GazeboSimSystem (Gazebo Harmonic, headless)",
                    "physics_engine_used": ENGINE_THE_GRIPPER_POSES_NEED, "physics_engine_passed_explicitly": True,
-                   "why_this_engine": "the launch defaults to DART, on which the gripper poses do not close (fingers do not follow the "
+                   "why_this_engine": "the launch defaults to DART, on which the gripper poses are not reached (fingers do not follow the "
                                       "position command at the default gain; no mimic constraint); the arm poses do not depend on it",
                    "tolerance_rad": TOLERANCE, "velocity_scaling": VELOCITY_SCALING, "acceleration_scaling": ACCELERATION_SCALING,
                    "gripper_interface": "GripperCommand via moveit_simple_controller_manager (ADR-009 option 1)",
@@ -141,5 +141,5 @@ class TestProcessesAlive(unittest.TestCase):
 @launch_testing.post_shutdown_test()
 @unittest.skipUnless(A7_ENABLED, SKIP_REASON)  # tracking: openAMRobot/openamr-upperbody-sw#16
 class TestShutdown(unittest.TestCase):
-    def test_m02_processes_started_and_exited_cleanly(self, proc_info):
-        stack_healthy(proc_info, expected=EXPECTED_PROCESSES, simulator=True, sidecar=("M02", f"gazebo_{LIFT_STOP}"))
+    def test_m02_processes_started_and_exited_cleanly(self, proc_info, proc_output):
+        stack_healthy(proc_info, expected=EXPECTED_PROCESSES, simulator=True, sidecar=("M02", f"gazebo_{LIFT_STOP}"), proc_output=proc_output)

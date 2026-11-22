@@ -1,0 +1,50 @@
+<?xml version="1.0"?>
+<!-- SPDX-License-Identifier: MIT -->
+<!--
+  Simulator joint dynamics for the OpenArm 2.0 joints (config/sim_dynamics/openarm_v2.yaml).
+
+  Included by combined_robot.xacro ONLY when simulator dynamics are on: hardware_profile gazebo (sim_dynamics auto), or
+  sim_dynamics on for a MuJoCo-facing URDF. It is never included for hardware_profile real, so the real expansion is the same
+  text as before this file existed (SD02 compares it).
+
+  How the values reach the joints. The upstream macros emit every OpenArm <joint> and take no dynamics argument, and xacro cannot
+  edit an element once it is emitted. Every movable OpenArm joint, the fingers included, emits its <limit> through one upstream
+  macro, openarm_v20_emit_limit (openarm_description, assets/robot/openarm_v2.0/urdf/utils/openarm_v20_utils.xacro, at the pin of
+  config/upstream_pins.yaml). This file REDEFINES that macro: the same <limit>, attribute for attribute, followed by <dynamics>.
+  xacro keeps the last definition of a macro, so the include must come after the upstream include and before the arm calls.
+  A macro body sees the properties of its caller, which is how the joint's name is known here:
+    arm joints      openarm_v20_emit_joint has the parameter joint_name
+    finger joints   openarm_v20_ee has prefix and finger1_joint_limit_effective, and no joint_name of its own
+  Both finger joints of a hand take the finger_joint1 entry. The profile gives finger_joint2 the same values (SD01 checks it), as
+  the upstream MuJoCo model does.
+
+  A movable OpenArm joint that the profile does not list stops the expansion. If upstream renames the macro at a new pin, no
+  <dynamics> appears and SD02 fails: a pin move must re-check this file.
+
+  Only <dynamics damping friction> is emitted. Armature has no URDF element; nothing is added to any link's inertia.
+-->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:property name="openamr_sim_dynamics_file" value="$(find openamrobot_upperbody_description)/config/sim_dynamics/openarm_v2.yaml"/>
+  <xacro:property name="openamr_sim_dynamics" lazy_eval="false" value="${xacro.load_yaml(openamr_sim_dynamics_file)}"/>
+
+  <xacro:macro name="openarm_v20_emit_limit" params="limit">
+    <limit
+      lower="${limit['lower']}"
+      upper="${limit['upper']}"
+      effort="${limit['effort']}"
+      velocity="${limit['velocity']}" />
+    <!-- Set only where the caller does not have them; a caller's own value wins. -->
+    <xacro:property name="finger1_joint_limit_effective" default="none"/>
+    <xacro:property name="joint_name" default="none"/>
+    <xacro:property name="openamr_dynamics_joint" lazy_eval="false"
+                    value="${(prefix + 'finger_joint1') if finger1_joint_limit_effective != 'none' else joint_name}"/>
+    <xacro:unless value="${openamr_dynamics_joint in openamr_sim_dynamics['joints']}">
+      <xacro:property name="openamr_sim_dynamics_missing" lazy_eval="false"
+                      value="${xacro.fatal('sim_dynamics: joint ' + str(openamr_dynamics_joint) + ' is not in config/sim_dynamics/openarm_v2.yaml; every movable OpenArm joint needs an entry with its sources')}"/>
+    </xacro:unless>
+    <xacro:property name="openamr_joint_dynamics" lazy_eval="false" value="${openamr_sim_dynamics['joints'][openamr_dynamics_joint]}"/>
+    <dynamics damping="${openamr_joint_dynamics['damping']['value']}" friction="${openamr_joint_dynamics['friction']['value']}"/>
+  </xacro:macro>
+
+</robot>

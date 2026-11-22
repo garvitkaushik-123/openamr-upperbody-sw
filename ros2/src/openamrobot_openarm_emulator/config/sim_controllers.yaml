@@ -1,0 +1,113 @@
+# SPDX-License-Identifier: MIT
+# Controllers of the controller manager that gz_ros2_control hosts inside the simulator, in the namespace /sim.
+# This is the plant side of the software-in-the-loop path. The real driver's controllers are
+# openamrobot_upperbody_control/config/arm_controllers.yaml, unchanged, in the root namespace.
+#
+#   joint_state_broadcaster   /sim/joint_states: what the physics does (ground truth)
+#   lift_controller           holds the lift, as in the Gazebo launch
+#   left_arm_emulator         the eight emulated motors of the left arm on vcan_arm_l
+#   right_arm_emulator        the eight emulated motors of the right arm on vcan_arm_r
+#
+# update_rate equals the world's physics rate (1 kHz): the motors' control law runs once per physics step.
+/**/controller_manager:
+  ros__parameters:
+    update_rate: 1000
+
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    lift_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
+    left_arm_emulator:
+      type: openamrobot_openarm_emulator/OpenArmCanEmulator
+
+    right_arm_emulator:
+      type: openamrobot_openarm_emulator/OpenArmCanEmulator
+
+/**/lift_controller:
+  ros__parameters:
+    joints:
+      - lift_joint
+    command_interfaces:
+      - position
+    state_interfaces:
+      - position
+      - velocity
+
+# Every parameter of the emulator, with its default. README: which values are sourced and which are assumptions.
+/**/left_arm_emulator:
+  ros__parameters:
+    can_interface: vcan_arm_l
+    arm_prefix: left_
+    # Motors J1..J7 and the gripper, in id order 0x01..0x08 (replies on 0x11..0x18).
+    motor_types: [DM8009, DM8009, DM4340, DM4340, DM4310, DM4310, DM4310, DM4310]
+    peak_torque: [40.0, 40.0, 27.0, 27.0, 7.0, 7.0, 7.0, 7.0]                             # N m
+    no_load_speed_24v: [16.755, 16.755, 5.4454, 5.4454, 20.944, 20.944, 20.944, 20.944]   # rad/s
+    damping_inertia: [7.60e-4, 4.25e-4, 5.70e-4, 2.54e-3, 1.77e-4, 1.36e-4, 2.15e-3, 1.10e-4]   # kg m^2, child link about the joint axis
+    reply_brs: true
+    supply_voltage: 25.6            # V. The robot's SAFE bus is 25.6 V nominal and reaches 29.2 V.
+    timing:
+      model: true                   # false: answer at once, as bare vcan does
+      nominal_bitrate: 1000000.0    # bit/s
+      data_bitrate: 5000000.0       # bit/s
+      turnaround_us: 0.0            # motor reply latency. Not measured yet.
+    motor:
+      answers_when_disabled: true
+      power_up_enabled: false
+      enable_clears_fault: false
+      can_timeout_s: 0.0            # 0: off
+      over_voltage_v: 32.0
+      under_voltage_v: 15.0
+      over_temperature_c: 120.0
+      voltage_speed_model: true
+      ambient_c: 25.0
+      implicit_damping: true   # numerical: keeps the damping term stable at the 1 ms physics step (README)
+      damping_split_hz: 200.0
+    fault:
+      can_loss: false
+      estop_power_cut: false
+      silent_motors: [0, 0, 0, 0, 0, 0, 0, 0]
+      error_codes: [0, 0, 0, 0, 0, 0, 0, 0]
+      temperature_mos_c: [25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0]
+      temperature_rotor_c: [25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0]
+      temperature_rate_c_per_s: 0.0
+
+
+/**/right_arm_emulator:
+  ros__parameters:
+    can_interface: vcan_arm_r
+    arm_prefix: right_
+    # Motors J1..J7 and the gripper, in id order 0x01..0x08 (replies on 0x11..0x18).
+    motor_types: [DM8009, DM8009, DM4340, DM4340, DM4310, DM4310, DM4310, DM4310]
+    peak_torque: [40.0, 40.0, 27.0, 27.0, 7.0, 7.0, 7.0, 7.0]                             # N m
+    no_load_speed_24v: [16.755, 16.755, 5.4454, 5.4454, 20.944, 20.944, 20.944, 20.944]   # rad/s
+    damping_inertia: [7.60e-4, 4.25e-4, 5.70e-4, 2.54e-3, 1.77e-4, 1.36e-4, 2.15e-3, 1.10e-4]   # kg m^2, child link about the joint axis
+    reply_brs: true
+    supply_voltage: 25.6            # V. The robot's SAFE bus is 25.6 V nominal and reaches 29.2 V.
+    timing:
+      model: true                   # false: answer at once, as bare vcan does
+      nominal_bitrate: 1000000.0    # bit/s
+      data_bitrate: 5000000.0       # bit/s
+      turnaround_us: 0.0            # motor reply latency. Not measured yet.
+    motor:
+      answers_when_disabled: true
+      power_up_enabled: false
+      enable_clears_fault: false
+      can_timeout_s: 0.0            # 0: off
+      over_voltage_v: 32.0
+      under_voltage_v: 15.0
+      over_temperature_c: 120.0
+      voltage_speed_model: true
+      ambient_c: 25.0
+      implicit_damping: true   # numerical: keeps the damping term stable at the 1 ms physics step (README)
+      damping_split_hz: 200.0
+    fault:
+      can_loss: false
+      estop_power_cut: false
+      silent_motors: [0, 0, 0, 0, 0, 0, 0, 0]
+      error_codes: [0, 0, 0, 0, 0, 0, 0, 0]
+      temperature_mos_c: [25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0]
+      temperature_rotor_c: [25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0, 25.0]
+      temperature_rate_c_per_s: 0.0
+

@@ -1,0 +1,464 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/openAMRobot/openamr-upperbody-sw/ros2/src/openamrobot_upperbody_description/config/sim_dynamics/sim_dynamics.schema.json",
+  "title": "Simulator dynamics profile (OpenArm joints of the combined model)",
+  "description": "SPDX-License-Identifier: MIT. Every quantity carries its value, unit, status, source and locator. An estimated quantity also carries its method.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "profile",
+    "description",
+    "read_on",
+    "applies_to",
+    "sources",
+    "sources_without_values",
+    "simulators",
+    "motor_classes",
+    "limits",
+    "joints",
+    "gripper",
+    "controller"
+  ],
+  "definitions": {
+    "commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "text": {
+      "type": "string",
+      "minLength": 3
+    },
+    "status": {
+      "enum": [
+        "upstream_sim_asset",
+        "upstream_urdf",
+        "upstream_driver",
+        "upstream_config",
+        "datasheet",
+        "estimated"
+      ]
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repository",
+        "commit",
+        "licence",
+        "note"
+      ],
+      "properties": {
+        "repository": {
+          "type": "string",
+          "pattern": "^https://github\\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+        },
+        "commit": {
+          "$ref": "#/definitions/commit"
+        },
+        "file": {
+          "$ref": "#/definitions/text"
+        },
+        "licence": {
+          "$ref": "#/definitions/text"
+        },
+        "note": {
+          "$ref": "#/definitions/text"
+        }
+      }
+    },
+    "quantity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "value",
+        "unit",
+        "status",
+        "source",
+        "locator"
+      ],
+      "properties": {
+        "value": {
+          "type": "number"
+        },
+        "unit": {
+          "enum": [
+            "N*m*s/rad",
+            "N*m",
+            "kg*m^2",
+            "rad/s",
+            "A",
+            "N",
+            "Hz",
+            "1"
+          ]
+        },
+        "status": {
+          "$ref": "#/definitions/status"
+        },
+        "source": {
+          "$ref": "#/definitions/text"
+        },
+        "locator": {
+          "$ref": "#/definitions/text"
+        },
+        "method": {
+          "$ref": "#/definitions/text"
+        },
+        "note": {
+          "$ref": "#/definitions/text"
+        }
+      },
+      "if": {
+        "properties": {
+          "status": {
+            "const": "estimated"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "method"
+        ]
+      }
+    },
+    "motor_class": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "motor",
+        "ledger_example_entry",
+        "damping",
+        "friction",
+        "armature"
+      ],
+      "properties": {
+        "motor": {
+          "$ref": "#/definitions/text"
+        },
+        "ledger_example_entry": {
+          "$ref": "#/definitions/text"
+        },
+        "damping": {
+          "$ref": "#/definitions/quantity"
+        },
+        "friction": {
+          "$ref": "#/definitions/quantity"
+        },
+        "armature": {
+          "$ref": "#/definitions/quantity"
+        },
+        "rotor_inertia_implied": {
+          "$ref": "#/definitions/quantity"
+        }
+      }
+    },
+    "limit_pair": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "effort",
+        "velocity"
+      ],
+      "properties": {
+        "effort": {
+          "$ref": "#/definitions/quantity"
+        },
+        "velocity": {
+          "$ref": "#/definitions/quantity"
+        }
+      }
+    },
+    "joint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "motor_class",
+        "controlled",
+        "damping",
+        "friction",
+        "armature",
+        "effort_limit",
+        "velocity_limit"
+      ],
+      "properties": {
+        "motor_class": {
+          "enum": [
+            "DM8009",
+            "DM4340",
+            "DM4310",
+            "finger"
+          ]
+        },
+        "controlled": {
+          "type": "boolean"
+        },
+        "damping": {
+          "$ref": "#/definitions/quantity"
+        },
+        "friction": {
+          "$ref": "#/definitions/quantity"
+        },
+        "armature": {
+          "$ref": "#/definitions/quantity"
+        },
+        "effort_limit": {
+          "$ref": "#/definitions/quantity"
+        },
+        "velocity_limit": {
+          "$ref": "#/definitions/quantity"
+        }
+      }
+    },
+    "simulator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "damping",
+        "friction",
+        "armature"
+      ],
+      "properties": {
+        "damping": {
+          "$ref": "#/definitions/text"
+        },
+        "friction": {
+          "$ref": "#/definitions/text"
+        },
+        "armature": {
+          "$ref": "#/definitions/text"
+        },
+        "limit": {
+          "$ref": "#/definitions/text"
+        }
+      }
+    }
+  },
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "profile": {
+      "const": "openarm_v2"
+    },
+    "description": {
+      "$ref": "#/definitions/text"
+    },
+    "read_on": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "applies_to": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "hardware_profiles",
+        "explicit_outputs",
+        "never"
+      ],
+      "properties": {
+        "hardware_profiles": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "gazebo"
+            ]
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "explicit_outputs": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "mujoco_urdf"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "never": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "real"
+            ]
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      }
+    },
+    "sources": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "$ref": "#/definitions/source"
+      }
+    },
+    "sources_without_values": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "repository",
+          "commit",
+          "finding"
+        ],
+        "properties": {
+          "repository": {
+            "type": "string",
+            "pattern": "^https://github\\.com/"
+          },
+          "commit": {
+            "$ref": "#/definitions/commit"
+          },
+          "finding": {
+            "$ref": "#/definitions/text"
+          }
+        }
+      }
+    },
+    "simulators": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "gazebo_harmonic",
+        "mujoco"
+      ],
+      "properties": {
+        "gazebo_harmonic": {
+          "$ref": "#/definitions/simulator"
+        },
+        "mujoco": {
+          "$ref": "#/definitions/simulator"
+        }
+      }
+    },
+    "motor_classes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "DM8009",
+        "DM4340",
+        "DM4310",
+        "finger"
+      ],
+      "properties": {
+        "DM8009": {
+          "$ref": "#/definitions/motor_class"
+        },
+        "DM4340": {
+          "$ref": "#/definitions/motor_class"
+        },
+        "DM4310": {
+          "$ref": "#/definitions/motor_class"
+        },
+        "finger": {
+          "$ref": "#/definitions/motor_class"
+        }
+      }
+    },
+    "limits": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "$ref": "#/definitions/limit_pair"
+      }
+    },
+    "joints": {
+      "type": "object",
+      "minProperties": 18,
+      "maxProperties": 18,
+      "propertyNames": {
+        "pattern": "^openarm_(left|right)_(joint[1-7]|finger_joint[12])$"
+      },
+      "additionalProperties": {
+        "$ref": "#/definitions/joint"
+      }
+    },
+    "gripper": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "joints",
+        "zero_is",
+        "zero_is_evidence",
+        "grip_limit",
+        "applied_as"
+      ],
+      "properties": {
+        "joints": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "zero_is": {
+          "const": "closed"
+        },
+        "zero_is_evidence": {
+          "$ref": "#/definitions/text"
+        },
+        "grip_limit": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "torque",
+            "current"
+          ],
+          "properties": {
+            "torque": {
+              "$ref": "#/definitions/quantity"
+            },
+            "current": {
+              "$ref": "#/definitions/quantity"
+            },
+            "fingertip_force": {
+              "$ref": "#/definitions/quantity"
+            },
+            "upstream_default_reference": {
+              "$ref": "#/definitions/quantity"
+            }
+          }
+        },
+        "applied_as": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/text"
+          },
+          "required": [
+            "gazebo",
+            "real"
+          ]
+        }
+      }
+    },
+    "controller": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "update_rate",
+        "applied_as"
+      ],
+      "properties": {
+        "update_rate": {
+          "$ref": "#/definitions/quantity"
+        },
+        "applied_as": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/text"
+          },
+          "required": [
+            "gazebo",
+            "mock",
+            "real"
+          ]
+        }
+      }
+    }
+  }
+}

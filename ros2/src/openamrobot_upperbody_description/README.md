@@ -73,6 +73,8 @@ commit of `config/upstream_pins.yaml` (C02); the preset files keep upstream's ze
 | `enable_planar_base` | `true`, `false` | `false` | `true` adds a `world` link and `base_planar_joint` (type `planar`, axis `0 0 1`) above `base_footprint`. Off by default: base and arm never move together in OpenAMRobot 2.0. |
 | `datums_file` | path | `config/datums.yaml` | Alternative datum file, used by the tests. |
 | `controllers_file` | absolute path | empty | The controller parameter file the `gazebo` profile hands to `gz_ros2_control`. Empty: no `<parameters>` element. Supplied by the simulation launch; ignored by `mock` and `real`. See [ros2_control](#ros2_control). |
+| `controllers_overlay_file` | absolute path | empty | A second controller parameter file for the `gazebo` profile, emitted as a second `<parameters>` after `controllers_file` (a later file wins). The simulation launch passes the control package's `sim_overlay.yaml` (upstream update rate, gripper `max_effort`). Ignored by `mock` and `real`. |
+| `sim_dynamics` | `auto`, `on`, `off` | `auto` | Simulator joint dynamics on the OpenArm joints, from `config/sim_dynamics/openarm_v2.yaml`. `auto`: on for `gazebo`, off for `mock` and `real`. `on`: for a MuJoCo-facing URDF (with `hardware_profile:=mock`); **refused with `real`**. `off`: a simulation without them, for comparison. See [Simulator dynamics](#simulator-dynamics). |
 
 The defaults of the first four are option B's `baseline:`; T01 asserts they match. An unknown value for any arg stops expansion
 with an error that lists the accepted values. There is no `mast_id`. <!-- decision-allow: CONFIG-IDS historical/negative: mast_id is gone, or the inputs before P15 -->
@@ -150,6 +152,55 @@ does not, and upstream's commented-out declaration cannot load under Jazzy's `ro
 cannot have command interfaces"). The gazebo package's README has the measurements. The multiplier it follows is read from
 upstream's `joint_mimics.yaml`, never written in `ros2_control.xacro` (`test_t15_finger_mimic_multiplier.py` fails on a
 literal, including one equal to today's value).
+
+## Simulator dynamics
+
+The canonical model has no joint damping, friction or rotor inertia on the OpenArm joints: upstream's description gives none (its
+`friction.yaml` is empty at the pin and at main). A simulator needs them, so they live in one file that is kept apart from the
+kinematics, `config/sim_dynamics/openarm_v2.yaml`, and reach only the simulated outputs.
+
+| Joints | Motor | Damping N*m*s/rad | Friction N*m | Armature kg*m^2 |
+|---|---|---|---|---|
+| `openarm_{left,right}_joint1`, `joint2` | DM-J8009P-2EC | 1.0 | 0.2 | 0.016 |
+| `openarm_{left,right}_joint3`, `joint4` | DM4340 series | 0.9 | 0.1 | 0.030 |
+| `openarm_{left,right}_joint5` to `joint7` | DM-J4310-2EC | 0.9 | 0.04 | 0.002 |
+| `openarm_{left,right}_finger_joint1`, `finger_joint2` | DM-J4310-2EC (one per hand) | 0.6 | 0 | 0.002 |
+
+- **Where the values come from.** Upstream's MuJoCo model of OpenArm 2.0 (`enactic/openarm_mujoco` at `1daab06`,
+  `v2/openarm_bimanual.xml`, Apache-2.0), read on 14 Nov 2026. The file records the commit, the place in the source and the status
+  of every value, and a schema and a test refuse a value without them. Upstream describes its armatures as motor rotor readouts
+  times gear ratio squared, with the gearbox contribution unconfirmed. **None is a measurement of a delivered arm.** They replace
+  "no dynamics at all", and system identification on the purchased arms replaces them.
+- **What is applied.** `urdf/sim_dynamics.xacro` adds `<dynamics damping friction>` to the eighteen movable OpenArm joints (the
+  sixteen controlled ones and the two mimic followers). It does this by redefining the one upstream macro that emits every
+  joint's `<limit>`, with the same `<limit>` and the `<dynamics>` after it; the file's header says why and what a pin move must
+  re-check. Nothing else in the expansion changes: with those eighteen lines removed the text equals the expansion without them.
+- **What is not applied.** Armature: URDF has no element for it, and nothing is added to a link's inertia. Gazebo Harmonic
+  therefore runs without reflected rotor inertia. A MuJoCo model built from the MuJoCo-facing URDF must set joint `armature` from the
+  profile; no exporter is in this repository yet. The effort and velocity limits in the profile are copies of the URDF's, for
+  reference; the URDF keeps its own and the test compares them.
+- **A limit found in CI (15 Nov 2026): position-servo joints only.** In Gazebo the damping is stepped explicitly. Without the rotor
+  inertia, damping times a 1 ms step over the link inertia about the joint is up to 6.6, and an explicit step is only stable below 2.
+  The position interface of `gz_ros2_control` drives the joint by a velocity constraint and is not affected (A7 passes). A joint driven
+  by effort is: the software-in-the-loop launch (`openamrobot_openarm_emulator`) had an arm swinging with the damping on, so it
+  expands the model with `sim_dynamics:=off`. With the armature the same ratio would be at most 0.42.
+- **Where it applies.** `hardware_profile:=gazebo` (by default), and `sim_dynamics:=on` for a MuJoCo-facing URDF. **Never the real
+  profile**: `hardware_profile:=real` has no `<dynamics>` on any OpenArm joint and its expansion is the same text as before, and
+  `sim_dynamics:=on` with `real` stops the expansion. `mock` has none by default (it has no physics).
+- **The gripper.** The profile also records which end is closed (zero) with the evidence, and a grip limit from the motor data:
+  3.0 N*m, the rated torque of the gripper motor, with its 2.5 A rated current. See the control package's README for how far that
+  limit is applied.
+
+```bash
+xacro .../urdf/combined_robot.xacro hardware_profile:=gazebo > /tmp/gazebo.urdf                  # <dynamics> on the OpenArm joints
+xacro .../urdf/combined_robot.xacro hardware_profile:=mock sim_dynamics:=on > /tmp/mujoco.urdf   # the same joints, for MuJoCo
+xacro .../urdf/combined_robot.xacro hardware_profile:=real > /tmp/real.urdf                      # none
+```
+
+`test/test_sim_dynamics_profile.py` checks the file (schema, a listed source and a locator for every value, a method for every
+estimate, full commit hashes, the pins equal `upstream_pins.yaml`, the joint list equals the model's, the limit copies equal the
+URDF's, upstream's `friction.yaml` is still empty). `test/test_sim_dynamics_urdf.py` checks the expansion (all 16 controlled joints
+and the two followers carry the profile's values in `gazebo`; none in `real`; nothing else moved).
 
 ## Add a configuration ID
 
@@ -324,17 +375,21 @@ Nothing in this package is a measured value or a hardware result. In particular:
 - **Base inertials are platform-sw CAD placeholders.** The base comes from `openamr-platform-sw` unchanged; its masses and
   inertias are CAD-export values. The arm masses are upstream nominal values, and the lift's 11.7 kg is a supplier catalogue
   figure (provisional), not a weighed one.
-- **The lift column is a mass on two boxes, the supplier's sections on both stages (P28).** The outer (fixed) stage is `lift_column_section`, 240 x 60 mm
-  (x fore-aft, option B's own statement of the 240 mm side, and the DOLD Hexalift datasheet page 4, "Outer profile 240x60"); the inner (moving) stage is
-  `lift_inner_section`, 209.5 x 51 mm (the same drawing, "Inner profile 209.5x51"), strictly smaller on both axes and centred on the column axis. Both are
-  visual and collision boxes: the outer, 0.530 m, on `lift_column_base_link`; the inner, 0.350 m (the stroke: the datasheet gives no stage length), on
-  `lift_carriage_link` below the carriage frame (opt-in `column_geometry`, which the combined robot passes). The outer section also sizes the inertia
-  tensor. **They are boxes, not the supplier's shapes**, and the outer collision is solid, so the two stages still overlap in volume (a hollow outer needs
-  the housing wall, which the datasheet does not give); the pair is a structural neighbour, so the collision matrix does not evaluate it. The adapter plate
-  (360 x 100 x 10 mm, `adapter_plate_section`, Alex 22 Oct, P-03 rev19.6 item 18) is its own link on the carriage, its rear edge flush with the column's rear
-  face (the 360 is 240 of column plus 120 ahead of the front face), and the arm profile stands on it (`arm_profile_link` is its child; its pose from the
-  carriage did not change). The whole catalogue mass sits on the fixed side at mid-height of the retracted column: the catalogue does not split it
-  between the fixed part and the moving stage.
+- **The lift column is a mass on two boxes, the supplier's sections on both stages (P28; lengths from the DOLD STEP, P-03 rev20.4 item 28).** The outer
+  (fixed) stage is `lift_column_section`, 240 x 60 mm (x fore-aft, option B's own statement of the 240 mm side, the DOLD Hexalift datasheet page 4,
+  "Outer profile 240x60", confirmed by the DOLD supplier CAD `Hexalift_EB530_Hub350_mit_Montagelaschen.STEP` of 8 Nov 2026); the inner (moving) stage is
+  `lift_inner_section`, 209.5 x 53.3 x 470 mm (the STEP; the datasheet drawing said 209.5 x 51 and gave no length), strictly smaller in section and
+  centred on the column axis. Both are visual and collision boxes: the outer, 0.505 m (to the static top, `lift_static_profile_top_below_column_top`
+  0.025 below the retracted top), on `lift_column_base_link`; the inner, 0.470 m, on `lift_carriage_link` with its top at the carriage frame, so its bottom
+  is 60 mm above the column base at L1000 (opt-in `column_geometry`, which the combined robot passes). The STEP's foot with mounting tabs
+  (280 x 60.4 x 10 mm) is not modelled. The lift is fixed through its four foot tab holes on the 260 x 30 mm pattern into the lift base plate
+  MEC-019 (P-03 item 30 A3, superseding item 28); the 224 x 40 mm pattern is internal to the DOLD assembly and not a fixing interface. The outer section also sizes the inertia tensor. **They are boxes, not the
+  supplier's shapes**, and the outer collision is solid, so the two stages still overlap in volume; the pair is a structural neighbour, so the collision
+  matrix does not evaluate it. The adapter plate (one 6082-T6 part, 425 x 100 x 10 mm, `adapter_plate_section`, P-03 rev20.4 item 28; it was 360 mm,
+  P-03 rev19.6 item 18) is its own link on the carriage, its front edge on the arm profile's front face and its rear edge 65 mm behind the column's rear
+  face (`adapter_plate_rear_extension`, for the flag rod), and the arm profile stands on it (`arm_profile_link` is its child; its pose from the carriage
+  did not change). The whole catalogue mass sits on the fixed side at mid-height of the retracted column: the catalogue does not split it between the
+  fixed part and the moving stage.
 - **The base's pose above the floor is a decision record, not a measurement.** `base_link_height_above_floor` = 0.098 and the
   column axis at x +0.060 are P-03 rev19.0 values (provisional); T04 asserts the datum equals platform-sw's joint in the expansion.
 - **The arms are 62 mm apart at their bases** (option B's y = +-0.031). They do not touch at the home pose at any lift stop or

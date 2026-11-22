@@ -88,7 +88,7 @@ EXTRA_CHECKS = [
 # The `gazebo` profile's checks (scripts/verify_gazebo.sh). Everything static is already covered by the `dev` report.
 GAZEBO_CHECKS = [
     ("G01", "combined robot in Gazebo: arm controllers, arm goal, Nav2-facing topics unchanged"),
-    ("G02", "grippers close in Gazebo and finger_joint2 follows finger_joint1 in the physics"),
+    ("G02", "grippers reach their goals in Gazebo and finger_joint2 follows finger_joint1 in the physics"),
     ("H02", "every test CMake registered left a result file (nothing registered but not run)"),
     ("I01", "installed packages match the source the tests and this report describe"),
     ("V01", "a person has looked at the simulator and RViz and answered the checklist"),
@@ -154,7 +154,7 @@ V01_LIFT_MEASURED = {
     "7": {"verdict": "PASS", "expected": "finger_joint1 and finger_joint2 equal within 0.01; the right hand opposite in sign",
           "measured": "left 0.4008 / 0.4008, right -0.4000 / -0.4000 (/joint_states); physical link-pose angles left 0.4008 / 0.4002, right -0.4000 / -0.4000",
           "note": "/joint_states carries finger_joint2 as the URDF mimic of finger_joint1 and so cannot disagree with it: the link-pose angles are the physical reading (G02's method)"},
-    "8": {"verdict": "PASS", "expected": "left/right hands_up joint4 1.5 within 0.01; scene robot and real end effector differ < 0.01 m; park equals home; grippers closed +0.7854 / -0.7854, open 0",
+    "8": {"verdict": "PASS", "expected": "left/right hands_up joint4 1.5 within 0.01; scene robot and real end effector differ < 0.01 m; park equals home; grippers at the far end of each hand's range +0.7854 / -0.7854 and back at 0 (the far end was named `closed` when this was measured; it is `open` since 14 Nov 2026, the motion is the same)",
           "measured": "joint4 1.50037 (left), 1.49916 (right); goal-state vs real end-effector difference at most 0.0005 m over six arm poses; park == home in the SRDF for both arms; "
                       "closed 0.78457 / -0.78456, open within 0.001 of 0; 10 of 10 requests SUCCESS, no 'Planning failed' after home",
           "cannot_measure": "'the Scene Robot in RViz' is an RViz object; the goal state's end-effector (forward kinematics of the goal joint values) against the real one's tf stands in for it"},

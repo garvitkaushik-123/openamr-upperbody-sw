@@ -31,7 +31,7 @@ SCALINGS = (1.0, 0.1, 0.01, 0.001)
 VELOCITY_SCALING = 0.5
 SIDES = ("left", "right")
 ARM_SEQUENCE = ("hands_up", "home", "hands_up", "park")
-GRIPPER_SEQUENCE = ("closed", "open")
+GRIPPER_SEQUENCE = ("open", "closed")      # from 0 (`closed`) to the far end and back: the motion measured before the names were fixed
 
 
 def make_moveit_py(base_plate, strip_acceleration_limits=False, srdf_file=None):
@@ -56,12 +56,12 @@ def make_moveit_py(base_plate, strip_acceleration_limits=False, srdf_file=None):
 
 
 def sequence():
-    """[(group, [(pose, previous pose)])]: every pose planned from a different one, the first from `home` (arms) or `open` (grippers)."""
+    """[(group, [(pose, previous pose)])]: every pose planned from a different one, the first from `home` (arms) or `closed` (grippers)."""
     out = []
     for side in SIDES:
         out.append((f"{side}_arm", list(zip(ARM_SEQUENCE, ("home",) + ARM_SEQUENCE[:-1]))))
     for side in SIDES:
-        out.append((f"{side}_gripper", list(zip(GRIPPER_SEQUENCE, ("open",) + GRIPPER_SEQUENCE[:-1]))))
+        out.append((f"{side}_gripper", list(zip(GRIPPER_SEQUENCE, ("closed",) + GRIPPER_SEQUENCE[:-1]))))
     return out
 
 

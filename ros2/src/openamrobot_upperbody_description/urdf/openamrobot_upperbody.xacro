@@ -23,19 +23,21 @@
                      {mass, com_z, ixx, iyy, izz}: it carries that inertial (the
                      combined robot supplies the sourced catalogue mass).
     column_geometry  '' (none): the column has no visual and no collision. A dict
-                     {section_x, section_y, inner_x, inner_y}: the two stages of the Hexalift,
-                     each a box, visual and collision (the collisions named placeholder_*): the
-                     OUTER (fixed) stage of section_x x section_y on lift_column_base_link
-                     (retracted length), the INNER (moving) stage of inner_x x inner_y on
-                     lift_carriage_link (stroke, below the carriage). The sections are the
-                     supplier's (datums lift_column_section and lift_inner_section); the
-                     inner stage's length is not, it is the stroke.
+                     {section_x, section_y, fixed_length, inner_x, inner_y, inner_length}: the
+                     two stages of the Hexalift, each a box, visual and collision (the
+                     collisions named placeholder_*): the OUTER (fixed) stage of section_x x
+                     section_y x fixed_length on lift_column_base_link, from the column base
+                     up, the INNER (moving) stage of inner_x x inner_y x inner_length on
+                     lift_carriage_link, below the carriage frame. All are the supplier's
+                     (datums lift_column_section, lift_inner_section and
+                     lift_static_profile_top_below_column_top, DOLD STEP of 8 Nov 2026).
     adapter_plate    '' (none): no adapter plate link. A dict {size_x, size_y, center_x}: the
                      plate under the arm profile, its own link adapter_plate_link on
                      lift_carriage_link, size_x fore-aft by size_y lateral by
                      geometry.adapter_plate_thickness, resting on the carriage frame's
                      horizontal plane (the column top at lift 0) and centred laterally;
-                     center_x is from the column axis (datum adapter_plate_section).
+                     center_x is from the column axis (datums adapter_plate_section and
+                     adapter_plate_rear_extension).
     lift_limits      '' (none): lift_joint carries effort 0 velocity 0, so the model cannot be used to command the
                      lift (the default, and what the real profile keeps). A dict {effort, velocity}: those limits on
                      lift_joint; the combined robot passes the DOLD figures (datums lift_max_effort_*, lift_max_velocity_*)
@@ -48,9 +50,10 @@
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
 
   <xacro:include filename="$(find openamrobot_upperbody_description)/urdf/upper_body_equipment.xacro"/>
+  <xacro:include filename="$(find openamrobot_upperbody_description)/urdf/roadmap_inertial.xacro"/>
 
   <xacro:macro name="openamrobot_upperbody"
-      params="parent column base_plate head_pitch base_tilt column_axis_x_bp000 emit_arm_mounts:=true column_inertial:='' column_geometry:='' adapter_plate:='' datums:='' lift_limits:=''">
+      params="parent column base_plate head_pitch base_tilt column_axis_x_bp000 emit_arm_mounts:=true column_inertial:='' column_geometry:='' adapter_plate:='' datums:='' lift_limits:='' carriage_inertial:=''">
 
     <xacro:property name="cfg" lazy_eval="false"
         value="${xacro.load_yaml('$(find openamrobot_upperbody_description)/config/upperbody_configuration.yaml')}"/>
@@ -102,7 +105,10 @@
 
     <!-- Column axis on the base-plate top face (height reference, 304 mm). -->
     <link name="lift_column_base_link">
-      <xacro:unless value="${column_inertial == ''}">
+      <xacro:if value="${'lift_column_base_link' in roadmap_links}">
+        <xacro:openamr_roadmap_inertial link="lift_column_base_link"/>
+      </xacro:if>
+      <xacro:unless value="${column_inertial == '' or 'lift_column_base_link' in roadmap_links}">
         <inertial>
           <origin xyz="0 0 ${column_inertial['com_z']}" rpy="0 0 0"/>
           <mass value="${column_inertial['mass']}"/>
@@ -111,13 +117,13 @@
       </xacro:unless>
       <xacro:unless value="${column_geometry == ''}">
         <visual>
-          <origin xyz="0 0 ${col['retracted_length'] / 2}" rpy="0 0 0"/>
-          <geometry><box size="${column_geometry['section_x']} ${column_geometry['section_y']} ${col['retracted_length']}"/></geometry>
+          <origin xyz="0 0 ${column_geometry['fixed_length'] / 2}" rpy="0 0 0"/>
+          <geometry><box size="${column_geometry['section_x']} ${column_geometry['section_y']} ${column_geometry['fixed_length']}"/></geometry>
           <material name="placeholder_geometry"/>
         </visual>
         <collision name="placeholder_lift_column_fixed_stage">
-          <origin xyz="0 0 ${col['retracted_length'] / 2}" rpy="0 0 0"/>
-          <geometry><box size="${column_geometry['section_x']} ${column_geometry['section_y']} ${col['retracted_length']}"/></geometry>
+          <origin xyz="0 0 ${column_geometry['fixed_length'] / 2}" rpy="0 0 0"/>
+          <geometry><box size="${column_geometry['section_x']} ${column_geometry['section_y']} ${column_geometry['fixed_length']}"/></geometry>
         </collision>
       </xacro:unless>
     </link>
@@ -134,19 +140,37 @@
          height is joint state. Effort and velocity are 0 unless lift_limits is
          given (the combined robot's simulated profiles): with 0 the model cannot
          be used to command the lift. -->
+    <!-- carriage_inertial (owner decision 8 Nov 2026: the roadmap model is the mass reference): the parts that ride the carriage
+         (adapter plate, arm profile, tablet mount, second E-stop, flag rod and flag) lumped on lift_carriage_link, from
+         config/roadmap_mass_export.yaml (openamrobot-docs mass_export.yaml, groups.lift_carriage). '' (none): no inertial. -->
+    <xacro:macro name="openamrobot_carriage_inertial">
+      <xacro:if value="${'lift_carriage_link' in roadmap_links}">
+        <xacro:openamr_roadmap_inertial link="lift_carriage_link"/>
+      </xacro:if>
+      <xacro:unless value="${carriage_inertial == '' or 'lift_carriage_link' in roadmap_links}">
+        <inertial>
+          <origin xyz="${carriage_inertial['com'][0]} ${carriage_inertial['com'][1]} ${carriage_inertial['com'][2]}" rpy="0 0 0"/>
+          <mass value="${carriage_inertial['mass']}"/>
+          <inertia ixx="${carriage_inertial['ixx']}" ixy="0" ixz="0" iyy="${carriage_inertial['iyy']}" iyz="0" izz="${carriage_inertial['izz']}"/>
+        </inertial>
+      </xacro:unless>
+    </xacro:macro>
     <xacro:if value="${column_geometry == ''}">
-      <link name="lift_carriage_link"/>
+      <link name="lift_carriage_link">
+        <xacro:openamrobot_carriage_inertial/>
+      </link>
     </xacro:if>
     <xacro:unless value="${column_geometry == ''}">
       <link name="lift_carriage_link">
+        <xacro:openamrobot_carriage_inertial/>
         <visual>
-          <origin xyz="0 0 ${-col['stroke'] / 2}" rpy="0 0 0"/>
-          <geometry><box size="${column_geometry['inner_x']} ${column_geometry['inner_y']} ${col['stroke']}"/></geometry>
+          <origin xyz="0 0 ${-column_geometry['inner_length'] / 2}" rpy="0 0 0"/>
+          <geometry><box size="${column_geometry['inner_x']} ${column_geometry['inner_y']} ${column_geometry['inner_length']}"/></geometry>
           <material name="placeholder_geometry"/>
         </visual>
         <collision name="placeholder_lift_column_moving_stage">
-          <origin xyz="0 0 ${-col['stroke'] / 2}" rpy="0 0 0"/>
-          <geometry><box size="${column_geometry['inner_x']} ${column_geometry['inner_y']} ${col['stroke']}"/></geometry>
+          <origin xyz="0 0 ${-column_geometry['inner_length'] / 2}" rpy="0 0 0"/>
+          <geometry><box size="${column_geometry['inner_x']} ${column_geometry['inner_y']} ${column_geometry['inner_length']}"/></geometry>
         </collision>
       </link>
       <xacro:openamrobot_placeholder_gazebo_material link="lift_carriage_link"/>

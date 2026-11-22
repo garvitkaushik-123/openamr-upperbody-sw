@@ -89,11 +89,10 @@ or a workflow; the export is also run by a test of the description package (`tes
 python3 tools/report_equipment_collisions.py [--json out.json]
 ```
 
-bp000 and bp050, the tablet in landscape (the model) and portrait (P-03 rev20.2 item 26, never drawn), lift stops L1000 / L1175 / L1350, the
-default state and every named arm pose of the SRDF. Every (moving equipment link, arm link) pair is checked with the SRDF's list ignored
-(`acm_scene`). It moves nothing and decides nothing. Portrait assumes the landscape centre as the pivot, which is **not stated** (datum
-`getac_tablet_portrait_pivot` is null), and keeps the head light where the model has it. A control (the flag on its rod, touching by
-design) shows the check sees a contact. Exit 0 whatever it finds, 2 when it could not run.
+bp000 and bp050, the tablet as the model draws it (portrait on a fixed mount, the only position since P-03 rev20.4 item 28; the
+landscape-plus-portrait variant and its assumed pivot are gone), lift stops L1000 / L1175 / L1350, the default state and every named arm
+pose of the SRDF. Every (moving equipment link, arm link) pair is checked with the SRDF's list ignored (`acm_scene`). It moves nothing and
+decides nothing. A control (the flag on its rod, touching by design) shows the check sees a contact. Exit 0 whatever it finds, 2 when it could not run.
 
 ### `export_docs_model_values.py`: the URDF, written as the docs model's CHEST-JSON and LIFT-JSON
 
@@ -102,15 +101,15 @@ python3 tools/export_docs_model_values.py [--urdf expanded.urdf] [--base-plate b
 ```
 
 Reads the expanded URDF (poses, box and cylinder sizes) and prints the two blocks in the format of openamrobot-docs
-`docs/assets/roadmap/model/model.js`. Not exported, because the URDF does not carry them: `second_estop.glb_node`, `second_estop.glb_axis` and
-`drawn.head_light.window`. One value comes from its datum: `second_estop.below_top` is measured from the docs model's static profile top
-(`lift_static_profile_top_below_column_top`). `test_item24_docs_model_values.py` compares the output with a verbatim fixture of the blocks
-(docs `cd780d6`), 0.5 mm tolerance; `--model-js <model.js>` compares with a live file (exit 1 on a difference).
+`docs/assets/roadmap/model/model.js`. Not exported, because the URDF does not carry them: `second_estop.glb_node`, `second_estop.glb_axis`,
+`drawn.head_light.window` and LIFT-JSON `corner_x` (the rod's corner bracket). Every exported value is read from the URDF.
+`test_item24_docs_model_values.py` compares the output with a verbatim fixture of the blocks (P-03 rev20.4 item 28: docs branch
+`roadmap/2026-11-08-owner-decisions`, not yet merged, on `8d743e2`), 0.5 mm tolerance; `--model-js <model.js>` compares with a live file (exit 1 on a difference).
 
 ### `v01_rear_captures/`: three rear views for V01
 
 `capture_rear.py <outdir>` takes one RViz shot from behind (and a little to the left) per lift stop at bp000, so the second E-stop on the
-static column's rear face and the stop sensors on its left face are in view. It reuses the P19 script `evidence/renders/rviz/capture_rviz.py`
+moving adapter plate (button up) and the stop sensors on the static column's rear face are in view (P-03 rev20.4 item 28). It reuses the P19 script `evidence/renders/rviz/capture_rviz.py`
 unchanged, pointed at this directory (`capture.launch.py` with `rear_capture.rviz`; `xgrab.py` runs the P19 grabber). The a7 job runs it after
 the six P19 views and uploads both with the artifact `v01-rviz-captures` (rear views under `rear/`). Pictures for a person, not evidence.
 

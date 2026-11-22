@@ -1,0 +1,7 @@
+# The pinned roadmap mass export (owner decision 8 Nov 2026: one source). config/roadmap_mass_export.yaml is a verbatim copy
+# of this file at this commit; the tests check the SHA-256. Update both together when the docs export changes.
+repository: openAMRobot/openamrobot-docs
+path: docs/assets/roadmap/model/mass_export.yaml
+commit: "ff8ca57f2687c7c0c9b65005da9d24baf5db8e7c"      # openamrobot-docs main, the reviewed export (docs #84 merge, 9 Nov 2026)
+# Only the upper-body links read this export. The base links still come from platform-sw at the platform pin (TODO(Tushar), see mass_provenance.yaml).
+sha256: 51ae3fb64db3117d1fafe839ed4af4b7125dd9aa762f605492eef6b932cdd1da
