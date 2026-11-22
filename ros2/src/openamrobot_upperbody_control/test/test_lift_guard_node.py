@@ -82,6 +82,13 @@ def node_module():
     return load_node_module()
 
 
+@pytest.fixture(autouse=True)
+def fixtures_do_not_write_the_exit_log(monkeypatch):
+    """OPENAMR_GUARD_EXIT_LOG is for the exits of real launches. These tests call deactivate_for_exit against a stand-in manager (and run the
+    node against one): they must not add their made-up outcomes to the log that the CI summary counts. The tests of the log itself set it."""
+    monkeypatch.delenv("OPENAMR_GUARD_EXIT_LOG", raising=False)
+
+
 @pytest.fixture
 def guard(node_module, tmp_path):
     rclpy.init(args=["--ros-args", "--params-file", params_file(tmp_path)])
