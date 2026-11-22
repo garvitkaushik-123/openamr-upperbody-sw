@@ -18,6 +18,8 @@
   <exec_depend>rviz2</exec_depend>
   <exec_depend>openamrobot_upperbody_description</exec_depend>
   <exec_depend>openamrobot_upperbody_control</exec_depend>
+  <!-- issue #44: sim.launch.py reads the SRDF for the lift guard and the start-up park move -->
+  <exec_depend>openamrobot_upperbody_moveit</exec_depend>
   <!-- platform-sw's bridge config is used by reference, and its world is available through the world argument -->
   <exec_depend>openamrobot_gazebo</exec_depend>
   <test_depend>launch_testing</test_depend>
