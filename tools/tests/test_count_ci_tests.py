@@ -89,3 +89,47 @@ def test_evidence_and_summary_file(tmp_path, capsys):
     assert rc == 0
     assert "20261030T000000Z_dev.json: git " + "a" * 40 + ", evidence_class static+mock, PASS 1, WARN 1" in out and "- C1 WARN" in out
     assert summary.read_text().strip() == out.strip()
+
+
+# --- the lift guard's exits: UNVERIFIED counted apart, never as PASS (owner decision on upperbody-sw #53) --------------------------------
+def guard_run(ws, capsys, log):
+    argv = ["--workspace", str(ws), "--label", "A7", "--evidence-glob", "evidence/*_dev.json", "--exit-status", "0",
+            "--guard-exit-log", log, PKG]
+    rc = cct.main(argv)
+    out = capsys.readouterr()
+    return rc, out.out
+
+
+def exits(*outcomes):
+    return "".join(json.dumps({"outcome": o}) + "\n" for o in outcomes)
+
+
+def test_guard_exits_are_counted_apart_and_unverified_is_a_warn(tmp_path, capsys):
+    ws = workspace(tmp_path, {"a.xml": suite(case("t1"))})
+    (ws / "guard_exits.jsonl").write_text(exits("confirmed", "confirmed", "manager_gone", "manager_gone", "manager_gone", "unanswered"))
+    rc, out = guard_run(ws, capsys, "guard_exits.jsonl")
+    assert rc == 0
+    assert "lift guard exits: 6: 2 confirmed, **4 UNVERIFIED (WARN, not PASS)**, 0 failed" in out
+    assert "- manager_gone: 3" in out and "- unanswered: 1" in out
+
+
+def test_a_failed_or_stop_unanswered_exit_is_counted_as_failed_never_as_unverified(tmp_path, capsys):
+    ws = workspace(tmp_path, {"a.xml": suite(case("t1"))})
+    (ws / "guard_exits.jsonl").write_text(exits("confirmed", "stop_unanswered", "failed"))
+    _, out = guard_run(ws, capsys, "guard_exits.jsonl")
+    assert "3: 1 confirmed, **0 UNVERIFIED (WARN, not PASS)**, 2 failed" in out
+
+
+def test_a_missing_or_empty_guard_log_is_said_not_read_as_zero_unverified(tmp_path, capsys):
+    ws = workspace(tmp_path, {"a.xml": suite(case("t1"))})
+    _, out = guard_run(ws, capsys, "guard_exits.jsonl")
+    assert "no log at" in out and "none counted as confirmed" in out
+    (ws / "guard_exits.jsonl").write_text("")
+    _, out = guard_run(ws, capsys, "guard_exits.jsonl")
+    assert "is empty" in out and "UNVERIFIED" not in out
+
+
+def test_without_the_option_the_summary_has_no_guard_section(tmp_path, capsys):
+    ws = workspace(tmp_path, {"a.xml": suite(case("t1"))})
+    _, out, _ = run(ws, capsys)
+    assert "lift guard exits" not in out

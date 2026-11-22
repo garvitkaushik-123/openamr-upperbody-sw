@@ -493,3 +493,55 @@ def test_exit_process_exits_with_the_code_and_flushes_what_was_printed(code):
     done = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, timeout=30)
     assert done.returncode == code, done.stderr
     assert done.stdout == "before exit"
+
+
+# --- the exit outcome during a stop, and the exit log (owner decision on #53, 22 Nov 2026) --------------------------------------------------
+def test_an_unanswered_exit_while_a_stop_is_in_progress_is_not_a_teardown_exception(guard, node_module, capsys):
+    """The base starts to move: the guard must stop the lift and has asked for the deactivation, which is not answered. A SIGTERM now, with
+    a manager that answers nobody, is "stop_unanswered": exit 1, never the teardown exception."""
+    make_active(guard)
+    feed(guard, 102.0, linear_x=0.5)
+    guard.on_timer()
+    assert guard.last_codes and guard.controller_state == "active"
+
+    class Silent(ScriptedExecutor):
+        def spin_until_future_complete(self, future, timeout_sec=None):
+            time.sleep(timeout_sec or 0.0)          # nothing ever answers
+
+    assert guard.deactivate_for_exit(Silent(guard)) == "stop_unanswered"
+    assert node_module.EXIT_CODES["stop_unanswered"] == 1
+    assert "FAIL, not a teardown exception" in capsys.readouterr().err
+
+
+def test_a_stop_that_gets_no_answer_while_running_is_switch_failed_not_an_exit_outcome(guard, node_module):
+    """In normal operation a deactivation nobody answers never produces an exit outcome: after switch_timeout_s + 1 s it is dropped and
+    the decision blocks with SWITCH_FAILED (an ERROR status). "unanswered" can only come from deactivate_for_exit, at teardown."""
+    make_active(guard)
+    feed(guard, 102.0, linear_x=0.5)
+    guard.on_timer()                                # the guard asks for the deactivation; nobody answers
+    guard.clock["t"] += guard.switch_timeout_s + 2.0
+    feed(guard, guard.clock["t"], linear_x=0.5)
+    guard.on_timer()                                # drops the unanswered request and marks the switch as failed
+    guard.on_timer()                                # the next decision carries SWITCH_FAILED
+    assert node_module.lg.SWITCH_FAILED in guard.last_codes
+    assert last_status(guard)[0] == DiagnosticStatus.ERROR
+
+
+def test_every_exit_is_appended_to_the_exit_log_with_its_verification(guard, node_module, tmp_path, monkeypatch):
+    """OPENAMR_GUARD_EXIT_LOG: one JSON line per exit. An unverified exit is marked as such, so the evidence summary can count it apart."""
+    import json
+    log = tmp_path / "guard_exits.jsonl"
+    monkeypatch.setenv(node_module.EXIT_LOG_ENV, str(log))
+    make_active(guard)
+    guard.gone["value"] = True
+    assert guard.deactivate_for_exit(ScriptedExecutor(guard)) == "manager_gone"
+    assert [json.loads(line) for line in log.read_text().splitlines()] == [
+        {"outcome": "manager_gone", "verified": False, "unverified": True, "stop_in_progress": False, "exit_code": 0}]
+
+
+def test_an_unwritable_exit_log_does_not_change_the_exit(guard, node_module, tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv(node_module.EXIT_LOG_ENV, str(tmp_path / "no_such_dir" / "exits.jsonl"))
+    make_active(guard)
+    guard.gone["value"] = True
+    assert guard.deactivate_for_exit(ScriptedExecutor(guard)) == "manager_gone"
+    assert "could not write" in capsys.readouterr().err

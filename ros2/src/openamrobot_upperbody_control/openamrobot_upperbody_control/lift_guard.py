@@ -277,6 +277,24 @@ def activation_overdue(codes, controller_state, activating_since, now, timeout_s
     return since, now - since > timeout_s
 
 
+def stop_in_progress(codes, controller_state, pending_target):
+    """True when the guard had decided that the lift must stop and had not yet seen lift_controller inactive: the controller is known to be
+    active, and either a code blocks it or a deactivation was already asked (`pending_target` is the target of a switch still in flight).
+
+    A controller that is not known to be active (never listed, or inactive) is not a lift that was allowed to move, so a teardown
+    during start-up is not a stop in progress."""
+    return controller_state == "active" and (bool(codes) or pending_target == "inactive")
+
+
+def classify_exit(outcome, stop_was_in_progress):
+    """The exit outcome as it is reported. A manager that answered none of the exit's requests ("unanswered") is a simulator-teardown
+    exception only when no stop was in progress (owner decision on #53, 22 Nov 2026). During a stop it is "stop_unanswered": the lift
+    may still have been commandable, and it fails. Every other outcome is reported as it is."""
+    if outcome == "unanswered" and stop_was_in_progress:
+        return "stop_unanswered"
+    return outcome
+
+
 def build_status(codes, controller_state):
     """The content of /lift_guard/status (diagnostic_msgs/DiagnosticStatus) as plain data: (level, name, message, [(key, value), ...]).
 

@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 """Test counts for the Model tests workflow (.github/workflows/model-tests.yml), and its zero-executed-test gate.
 
-    count_ci_tests.py --workspace WS --label A6 --evidence-glob 'evidence/*_dev.json' --exit-status RC [--summary FILE] PKG [PKG ...]
+    count_ci_tests.py --workspace WS --label A6 --evidence-glob 'evidence/*_dev.json' --exit-status RC [--summary FILE] [--guard-exit-log FILE] PKG [PKG ...]
 
 Reads the JUnit XML that `colcon test` leaves in <WS>/build/<PKG>/test_results/<PKG>/*.xml and counts <testcase> elements, not the
 `tests` attributes of the suites, so the numbers are the cases themselves:
@@ -72,6 +72,31 @@ def evidence_lines(workspace, pattern):
     return lines or [f"no evidence report matches {pattern}"]
 
 
+# The lift guard's exit outcomes (ros2/src/openamrobot_upperbody_control/scripts/lift_guard.py): "confirmed" is verified; these two exit 0 as a
+# simulator-teardown exception and are UNVERIFIED (owner decision on upperbody-sw #53, 22 Nov 2026); everything else is a failure.
+GUARD_VERIFIED = ("confirmed",)
+GUARD_UNVERIFIED = ("manager_gone", "unanswered")
+
+
+def guard_exit_lines(path):
+    """Summary lines for the lift guard's exits, read from the file the guard appends to ($OPENAMR_GUARD_EXIT_LOG, one JSON line per exit).
+    UNVERIFIED exits are counted apart from the confirmed ones and are a WARN: they never join a PASS count. A missing or empty file is
+    said, not read as zero unverified exits."""
+    if not os.path.isfile(path):
+        return [f"lift guard exits: no log at {path}: nothing recorded, none counted as confirmed"]
+    with open(path) as f:
+        rows = [json.loads(line) for line in f if line.strip()]
+    if not rows:
+        return [f"lift guard exits: the log {path} is empty: nothing recorded, none counted as confirmed"]
+    counts = collections.Counter(row["outcome"] for row in rows)
+    confirmed = sum(counts[o] for o in GUARD_VERIFIED)
+    unverified = sum(counts[o] for o in GUARD_UNVERIFIED)
+    failed = len(rows) - confirmed - unverified
+    lines = [f"lift guard exits: {len(rows)}: {confirmed} confirmed, **{unverified} UNVERIFIED (WARN, not PASS)**, {failed} failed"]
+    lines += [f"- {outcome}: {count}" for outcome, count in sorted(counts.items()) if outcome not in GUARD_VERIFIED]
+    return lines
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--workspace", default=".")
@@ -79,6 +104,8 @@ def main(argv=None):
     parser.add_argument("--evidence-glob", required=True, help="relative to the workspace, e.g. 'evidence/*_dev.json'")
     parser.add_argument("--exit-status", default="not run", help="the verifier's exit status, printed only")
     parser.add_argument("--summary", help="append the lines to this file too (the job summary)")
+    parser.add_argument("--guard-exit-log", help="the lift guard's exit log (OPENAMR_GUARD_EXIT_LOG): its exits are counted apart, "
+                                                 "UNVERIFIED ones as WARN, never as PASS")
     parser.add_argument("packages", nargs="+")
     ns = parser.parse_args(argv)
 
@@ -93,6 +120,7 @@ def main(argv=None):
             lines.append(f"- {package}: {counts['discovered']} / {counts['skipped']} / {counts['executed']} / {counts['failed']}; "
                          f"{ctest} ctest entries, {counts['files']} result files")
         evidence = evidence_lines(ns.workspace, ns.evidence_glob)
+        guard = guard_exit_lines(os.path.join(ns.workspace, ns.guard_exit_log)) if ns.guard_exit_log else []
     except (OSError, ET.ParseError, KeyError, ValueError) as exc:
         print(f"count_ci_tests: cannot read the results: {exc}", file=sys.stderr)
         return 2
@@ -100,6 +128,7 @@ def main(argv=None):
                  f"{total['failed']} failed** (colcon total = discovered + {total['ctest']} ctest entries = "
                  f"{total['discovered'] + total['ctest']})")
     lines += evidence
+    lines += guard
     lines.append(f"verifier exit status: {ns.exit_status}")
     lines.append(f"CI results are {ns.label} evidence only: not hardware, physical acceptance or safety evidence.")
     print("\n".join(lines))

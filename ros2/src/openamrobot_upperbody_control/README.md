@@ -38,6 +38,23 @@ on SIGINT/SIGTERM (`ros_exit.py`), as every process of a launch must at teardown
 destroying the DDS participant can deadlock in rmw_fastrtps and the launch then SIGKILLs the process (`ros_exit.py` has the evidence).
 `park_arms.py` counts a park goal that a newer goal replaced as not failed. The real profile has no guard.
 
+### Exit outcomes (owner decision on #53, 22 Nov 2026)
+
+| Outcome | When | Exit | Reported as |
+|---|---|---|---|
+| `confirmed` | the manager answered and lists `lift_controller` not active | 0 | verified |
+| `manager_gone` | the manager has left the graph (it deactivates its controllers on shutdown) | 0 | **UNVERIFIED, WARN** |
+| `unanswered` | the manager is in the graph and answered none of the exit's requests, **no stop in progress** | 0 | **UNVERIFIED, WARN**; a simulator-teardown exception only |
+| `stop_unanswered` | the same, while a stop was in progress (`lift_controller` known active and blocked, or a deactivation already asked) | 1 | FAIL |
+| `failed` | the manager answered but did not confirm `lift_controller` inactive | 1 | FAIL |
+
+`unanswered` is returned only by the exit (`deactivate_for_exit`), never while the guard runs: a stop that gets no answer in normal
+operation is dropped after `switch_timeout_s + 1 s` and blocks with `SWITCH_FAILED` (an ERROR status). UNVERIFIED never counts toward a
+PASS total. With `OPENAMR_GUARD_EXIT_LOG=<file>` set, every exit appends one JSON line; `tools/count_ci_tests.py --guard-exit-log` counts the
+unverified exits apart in the job summary, and says so when there is no log. The register entry for this exclusion is a contract change request
+in `openAMRobot/.github` (opened by the owner). Simulation only: the physical CTL-017 interlock needs independent hardware validation, and
+#53/#60 are not physical safety evidence.
+
 ### Known limits and open decisions (review on #44)
 
 What the simulated guard implements is not the agreed robot behaviour, and its numbers are not robot limits:

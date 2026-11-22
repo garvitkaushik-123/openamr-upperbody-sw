@@ -24,11 +24,16 @@ Output:
 Exit. On SIGINT or SIGTERM the node stops deciding (no activation can be asked from then on), deactivates lift_controller itself (best
 effort, so an already inactive controller is not an error) and confirms with list_controllers that it is not active, before it exits 0:
 the controller is inactive no later than the guard's exit (accepted on #44). If the controller manager has already left the ROS graph (a
-normal teardown stops both, often the manager first), lift_controller stopped with it: exit 0, logged as UNVERIFIED by the guard. If the
-manager is still there but never confirms: exit 1.
+normal teardown stops both, often the manager first), lift_controller stopped with it: exit 0, logged as UNVERIFIED by the guard. A manager
+that is still in the graph but answers none of the exit's requests ("unanswered") is the same simulator-teardown exception, exit 0 and
+UNVERIFIED, only when no stop was in progress; during a stop it is "stop_unanswered", exit 1 (owner decision on #53, 22 Nov 2026).
+UNVERIFIED is a WARN, never a PASS: with OPENAMR_GUARD_EXIT_LOG set, every exit is appended to that file, for the evidence summary.
+If the manager is still there and answers but never confirms: exit 1.
 A death without a signal it can handle (SIGKILL, a crash) is covered by the launch's OnProcessExit handler. Nothing covers a guard that
 hangs, and this node claims nothing about it.
 """
+import json
+import os
 import signal
 import sys
 import time
@@ -64,8 +69,14 @@ EXIT_POLL_S = 0.1           # while an exit request is unanswered, how often the
 # The whole exit, every round included: below the launch's 5 s before it escalates SIGINT to SIGTERM. A manager that crashed can stay in
 # the graph (its participant never said goodbye), so "gone" is not seen and the rounds would otherwise run on (seen with a crashed gz server).
 EXIT_BUDGET_S = 4.0
-EXIT_OUTCOMES = ("confirmed", "manager_gone", "unanswered", "failed")
-EXIT_CODES = {"confirmed": 0, "manager_gone": 0, "unanswered": 0, "failed": 1}
+EXIT_OUTCOMES = ("confirmed", "manager_gone", "unanswered", "stop_unanswered", "failed")
+EXIT_CODES = {"confirmed": 0, "manager_gone": 0, "unanswered": 0, "stop_unanswered": 1, "failed": 1}
+# Outcomes the guard could not verify: exit 0 is allowed for them as a simulator-teardown exception (owner decision on #53, 22 Nov 2026),
+# and they are reported as WARN/UNVERIFIED, never as a PASS.
+UNVERIFIED_OUTCOMES = ("manager_gone", "unanswered")
+# When set, every exit appends one JSON line (outcome, verified, stop_in_progress, exit_code) to this file, so that the evidence summary
+# can count the unverified exits apart from the confirmed ones (tools/count_ci_tests.py --guard-exit-log).
+EXIT_LOG_ENV = "OPENAMR_GUARD_EXIT_LOG"
 
 
 class LiftGuard(Node):
@@ -103,6 +114,7 @@ class LiftGuard(Node):
         self.exiting = False                   # set by deactivate_for_exit: from then on nothing polls, decides or switches
         self.last_status = None
         self.last_codes = None
+        self.exit_stop_in_progress = False     # set by deactivate_for_exit: a stop was in progress when the exit began
 
         manager = self.get_parameter("controller_manager").value.rstrip("/")
         self.manager = manager if manager.startswith("/") else "/" + manager
@@ -257,6 +269,8 @@ class LiftGuard(Node):
                           lives on for seconds (M07 on ROS 2 Jazzy: "Deactivated controllers: [ lift_controller ]" in gz's log, the reply
                           never arrived, gz was SIGTERMed 5 s later). A manager that answers nobody cannot move the lift for anyone
                           either. UNVERIFIED by the guard, exit 0;
+          "stop_unanswered"  as "unanswered", but a stop was in progress when the exit began (lift_controller known to be active and a code
+                          blocking it, or a deactivation already asked: lg.stop_in_progress). Not a teardown exception: exit 1;
           "failed"        the manager answered, but never confirmed lift_controller inactive (a refused deactivation, or still listed
                           active) within EXIT_ATTEMPTS rounds and EXIT_BUDGET_S. Exit 1.
 
@@ -266,6 +280,8 @@ class LiftGuard(Node):
         already inactive controller is not an error); confirm with list_controllers that lift_controller is not active. An activation sent
         before the shutdown is answered by the manager before this deactivation (same client, in order); if one still shows active, the
         round repeats."""
+        pending_target = self.switch_future[1] if self.switch_future is not None else None
+        self.exit_stop_in_progress = lg.stop_in_progress(self.last_codes, self.controller_state, pending_target)
         self.exiting = True
         self.status_timer.cancel()
         self.switches_sent += 1
@@ -304,16 +320,33 @@ class LiftGuard(Node):
         print(f"lift_guard: exit deactivation, {text}", file=sys.stderr, flush=True)
 
     def exit_report(self, outcome, state=None):
+        outcome = lg.classify_exit(outcome, self.exit_stop_in_progress)
         messages = {
             "confirmed": f"{self.controller_name} confirmed {state} at exit",
             "manager_gone": f"the controller manager {self.manager} has gone: {self.controller_name} stopped with it (the manager "
                             "deactivates its controllers when it shuts down). UNVERIFIED by the guard",
             "unanswered": f"the controller manager {self.manager} is in the graph but answered none of the exit's requests (it is "
                           f"stopping too): {self.controller_name} UNVERIFIED by the guard",
+            "stop_unanswered": f"the controller manager {self.manager} answered none of the exit's requests while a stop was in progress "
+                               f"({self.controller_name} was active and blocked): FAIL, not a teardown exception",
             "failed": f"{self.controller_name} NOT confirmed inactive at exit: the controller manager answered but did not confirm it",
         }
         print(f"lift_guard: {messages[outcome]}", file=sys.stderr, flush=True)
+        self.record_exit(outcome)
         return outcome
+
+    def record_exit(self, outcome):
+        """Append the outcome to $OPENAMR_GUARD_EXIT_LOG, if set. Never raises: the exit must not fail because a log could not be written."""
+        path = os.environ.get(EXIT_LOG_ENV)
+        if not path:
+            return
+        line = json.dumps({"outcome": outcome, "verified": outcome == "confirmed", "unverified": outcome in UNVERIFIED_OUTCOMES,
+                           "stop_in_progress": self.exit_stop_in_progress, "exit_code": EXIT_CODES[outcome]})
+        try:
+            with open(path, "a", encoding="utf-8") as handle:
+                handle.write(line + "\n")
+        except OSError as err:
+            print(f"lift_guard: could not write {EXIT_LOG_ENV}={path}: {err}", file=sys.stderr, flush=True)
 
     # --- the decision and the status ------------------------------------------------------------------------------------------------------
     def step(self, periodic=False):

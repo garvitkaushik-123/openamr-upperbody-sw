@@ -372,3 +372,30 @@ def test_no_switch_failed_while_lift_controller_is_not_loaded_yet(listed):
     level, _, message, values = lg.build_status((), listed)
     assert (level, values) == (lg.LEVEL_WARN, [("lift_controller", "activating"), ("blocking", "")])
     assert "waiting for lift_controller to be loaded" in message
+
+
+# --- the exit outcome: "unanswered" is a teardown exception only when no stop was in progress (owner decision on #53, 22 Nov 2026) --------
+@pytest.mark.parametrize("codes, state, pending, expected", [
+    ((), "active", None, False),                                  # allowed to move, nothing blocks: a plain teardown
+    ((lg.BASE_MOVING,), "active", None, True),                    # blocked, not yet confirmed inactive: a stop is in progress
+    ((), "active", "inactive", True),                             # a deactivation was already asked
+    ((), "active", "active", False),                              # an activation in flight is not a stop
+    ((lg.BASE_MOVING,), "inactive", None, False),                 # already inactive: nothing to stop
+    ((lg.BASE_MOVING,), None, None, False),                       # never listed (start-up): the lift was never allowed to move
+    ((lg.BASE_MOVING,), "unconfigured", None, False),
+    (None, "active", None, False),                                # no decision made yet
+])
+def test_stop_in_progress(codes, state, pending, expected):
+    assert lg.stop_in_progress(codes, state, pending) is expected
+
+
+@pytest.mark.parametrize("outcome, stop, expected", [
+    ("unanswered", False, "unanswered"),                          # the teardown exception: exit 0, UNVERIFIED
+    ("unanswered", True, "stop_unanswered"),                      # during a stop: its own code, a failure
+    ("manager_gone", True, "manager_gone"),                       # only "unanswered" is reclassified
+    ("manager_gone", False, "manager_gone"),
+    ("confirmed", True, "confirmed"),
+    ("failed", True, "failed"),
+])
+def test_classify_exit(outcome, stop, expected):
+    assert lg.classify_exit(outcome, stop) == expected
